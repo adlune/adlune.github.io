@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokédex · Adrian Lara</title>
+  <meta name="description" content="A Pokédex built with vanilla JavaScript and PokéAPI.">
+
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --text: #18181b;
+      --muted: #71717a;
+      --card: #ffffff;
+      --border: #e4e4e7;
+      --accent: #2563eb;
+      --track: #e4e4e7;
+      --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --text: #fafafa;
+        --muted: #a1a1aa;
+        --card: #18181b;
+        --border: #27272a;
+        --accent: #60a5fa;
+        --track: #27272a;
+        --shadow: none;
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+
+    header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    h1 { font-size: 2rem; }
+    .back { font-size: .9rem; }
+
+    /* ---------- Controls ---------- */
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px; }
+    .controls input, .controls select {
+      font: inherit;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+    }
+    .controls input { flex: 1 1 240px; }
+    .controls select { flex: 0 1 180px; text-transform: capitalize; }
+    .count { color: var(--muted); font-size: .9rem; width: 100%; }
+
+    /* ---------- Grid ---------- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      all: unset;
+      box-sizing: border-box;
+      cursor: pointer;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+    .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .card[hidden] { display: none; }
+
+    .card img { width: 110px; height: 110px; object-fit: contain; }
+    .num { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .name { font-weight: 600; margin: 2px 0 8px; }
+
+    .types { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; min-height: 22px; }
+    .type {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--type-color, #888);
+    }
+    .type.loading { background: var(--track); width: 52px; color: transparent; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 50% { opacity: .5; } }
+
+    .status { text-align: center; color: var(--muted); padding: 40px 0; }
+    .status button, .more {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 22px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+    .more { display: block; margin: 28px auto 0; }
+    .more:hover, .status button:hover { border-color: var(--accent); }
+    .more:disabled { opacity: .6; cursor: default; }
+
+    /* ---------- Detail dialog ---------- */
+    dialog {
+      border: none;
+      border-radius: 18px;
+      padding: 0;
+      width: min(480px, calc(100% - 32px));
+      max-height: calc(100% - 32px);
+      background: var(--card);
+      color: var(--text);
+      margin: auto;
+    }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+
+    .detail-top {
+      position: relative;
+      padding: 24px 24px 12px;
+      text-align: center;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--type-color, #888) 28%, transparent), transparent);
+    }
+    .close {
+      position: absolute; top: 12px; right: 12px;
+      font-size: 1.4rem; line-height: 1;
+      border: none; background: none; color: var(--text);
+      cursor: pointer; padding: 6px 10px; border-radius: 8px;
+    }
+    .close:hover { background: var(--track); }
+    .detail-top img { width: 200px; height: 200px; object-fit: contain; }
+    .detail-top h2 { font-size: 1.6rem; }
+
+    .detail-body { padding: 8px 24px 24px; }
+    .flavor { color: var(--muted); text-align: center; margin: 12px 0 18px; font-style: italic; }
+
+    .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; text-align: center; }
+    .facts div { background: var(--bg); border-radius: 10px; padding: 8px; }
+    .facts dt { font-size: .75rem; color: var(--muted); }
+    .facts dd { font-weight: 600; text-transform: capitalize; font-size: .92rem; }
+
+    h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+    .stat { display: grid; grid-template-columns: 64px 36px 1fr; gap: 10px; align-items: center; margin-bottom: 6px; font-size: .88rem; }
+    .stat .label { color: var(--muted); }
+    .stat .val { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+    .bar { height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: var(--type-color, var(--accent)); border-radius: 999px; }
+
+    footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Pokédex</h1>
+      <a class="back" href="/">← Back to adrianlara.dev</a>
+    </header>
+
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search by name or number…" autocomplete="off" aria-label="Search">
+      <select id="typeFilter" aria-label="Filter by type">
+        <option value="">All types</option>
+      </select>
+      <p class="count" id="count"></p>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="status" id="status">Loading…</div>
+    <button class="more" id="more" hidden>Load more</button>
+
+    <footer>
+      Data from <a href="https://pokeapi.co" target="_blank" rel="noopener">PokéAPI</a>.
+      Fan project, not affiliated with Nintendo, Game Freak or The Pokémon Company.
+    </footer>
+  </div>
+
+  <dialog id="detail" aria-labelledby="detailName"></dialog>
+
+  <script>
+    // ---------- Config ----------
+    const START_URL = "https://pokeapi.co/api/v2/pokemon/?offset=20&limit=100";
+    const ARTWORK = (id) =>
+      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+    const CONCURRENCY = 8; // detail requests
+
+    const TYPE_COLORS = {
+      normal: "#9a9a7a", fire: "#e8743b", water: "#4f8fe8", electric: "#e0b417",
+      grass: "#5fae4e", ice: "#5cc4c0", fighting: "#c0392b", poison: "#9b51b5",
+      ground: "#c9a24a", flying: "#8e8fe8", psychic: "#e8578a", bug: "#94a82a",
+      rock: "#b09c45", ghost: "#6d5a9c", dragon: "#6a4ce8", dark: "#6b5848",
+      steel: "#9a9ab8", fairy: "#e08fb0"
+    };
+
+    const STAT_LABELS = {
+      "hp": "HP", "attack": "Attack", "defense": "Defense",
+      "special-attack": "Sp. Atk", "special-defense": "Sp. Def", "speed": "Speed"
+    };
+
+    // ---------- State ----------
+    let nextUrl = START_URL;
+    const pokemon = [];            
+    const cards = new Map();       
+    const detailCache = new Map(); 
+    const seenTypes = new Set();
+
+    // ---------- Elements ----------
+    const grid = document.getElementById("grid");
+    const statusEl = document.getElementById("status");
+    const moreBtn = document.getElementById("more");
+    const searchEl = document.getElementById("search");
+    const typeEl = document.getElementById("typeFilter");
+    const countEl = document.getElementById("count");
+    const dialog = document.getElementById("detail");
+
+    // ---------- Helpers ----------
+    const idFromUrl = (url) => Number(url.split("/").filter(Boolean).pop());
+    const pad = (n) => "#" + String(n).padStart(4, "0");
+
+    const SPECIAL_NAMES = { "nidoran-f": "Nidoran ♀", "nidoran-m": "Nidoran ♂", "mr-mime": "Mr. Mime", "farfetchd": "Farfetch’d" };
+    function prettyName(name) {
+      if (SPECIAL_NAMES[name]) return SPECIAL_NAMES[name];
+      return name.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    }
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function typeBadge(type) {
+      const badge = el("span", "type", type);
+      badge.style.setProperty("--type-color", TYPE_COLORS[type] || "#888");
+      return badge;
+    }
+
+    async function getJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      return res.json();
+    }
+
+    async function getDetails(p) {
+      if (detailCache.has(p.id)) return detailCache.get(p.id);
+      const data = await getJSON(p.url);
+      detailCache.set(p.id, data);
+      return data;
+    }
+
+    async function runPool(items, worker, size) {
+      let i = 0;
+      const runners = Array.from({ length: Math.min(size, items.length) }, async () => {
+        while (i < items.length) {
+          const item = items[i++];
+          try { await worker(item); } catch (e) { console.warn(e); }
+        }
+      });
+      await Promise.all(runners);
+    }
+
+    // ---------- Rendering ----------
+    function createCard(p) {
+      const card = el("button", "card");
+      card.type = "button";
+      card.setAttribute("aria-label", `${prettyName(p.name)} details`);
+
+      const img = el("img");
+      img.src = ARTWORK(p.id);
+      img.alt = prettyName(p.name);
+      img.loading = "lazy";
+      img.width = 110; img.height = 110;
+
+      const types = el("div", "types");
+      types.append(el("span", "type loading", "…"), el("span", "type loading", "…"));
+
+      card.append(img, el("span", "num", pad(p.id)), el("span", "name", prettyName(p.name)), types);
+      card.addEventListener("click", () => openDetail(p));
+      cards.set(p.id, card);
+      return card;
+    }
+
+    function fillTypes(p) {
+      const box = cards.get(p.id).querySelector(".types");
+      box.replaceChildren(...p.types.map(typeBadge));
+    }
+
+    function addTypeOption(type) {
+      if (seenTypes.has(type)) return;
+      seenTypes.add(type);
+      const options = [...seenTypes].sort();
+      const current = typeEl.value;
+      typeEl.replaceChildren(new Option("All types", ""), ...options.map((t) => new Option(t, t)));
+      typeEl.value = current;
+    }
+
+    function applyFilters() {
+      const q = searchEl.value.trim().toLowerCase().replace(/^#/, "");
+      const type = typeEl.value;
+      let shown = 0;
+
+      for (const p of pokemon) {
+        const matchesText = !q || p.name.includes(q) || prettyName(p.name).toLowerCase().includes(q) || String(p.id) === q.replace(/^0+/, "");
+        const matchesType = !type || (p.types && p.types.includes(type));
+        const visible = matchesText && matchesType;
+        cards.get(p.id).hidden = !visible;
+        if (visible) shown++;
+      }
+
+      countEl.textContent = `Showing ${shown} of ${pokemon.length} loaded Pokémon`;
+      if (pokemon.length && shown === 0) {
+        statusEl.hidden = false;
+        statusEl.textContent = "No Pokémon match your search.";
+      } else if (pokemon.length) {
+        statusEl.hidden = true;
+      }
+    }
+
+    // ---------- Loading ----------
+    async function loadPage() {
+      if (!nextUrl) return;
+      moreBtn.disabled = true;
+      moreBtn.textContent = "Loading…";
+
+      try {
+        const data = await getJSON(nextUrl);
+        nextUrl = data.next;
+
+        const batch = data.results.map((r) => ({ id: idFromUrl(r.url), name: r.name, url: r.url, types: null }));
+        pokemon.push(...batch);
+        grid.append(...batch.map(createCard));
+        applyFilters();
+
+        moreBtn.hidden = !nextUrl;
+        moreBtn.disabled = false;
+        moreBtn.textContent = "Load more";
+
+        // Fill in types in the background
+        await runPool(batch, async (p) => {
+          const d = await getDetails(p);
+          p.types = d.types.map((t) => t.type.name);
+          p.types.forEach(addTypeOption);
+          fillTypes(p);
+        }, CONCURRENCY);
+        applyFilters();
+      } catch (err) {
+        moreBtn.disabled = false;
+        moreBtn.textContent = "Load more";
+        statusEl.hidden = false;
+        statusEl.replaceChildren(
+          el("p", "", "Couldn’t reach PokéAPI. Check your connection and try again."),
+          Object.assign(el("button", "", "Retry"), { onclick: loadPage })
+        );
+      }
+    }
+
+    // ---------- Detail dialog ----------
+    async function openDetail(p) {
+      dialog.style.removeProperty("--type-color");
+      dialog.replaceChildren(el("div", "status", "Loading…"));
+      dialog.showModal();
+
+      try {
+        const d = await getDetails(p);
+        const types = d.types.map((t) => t.type.name);
+        dialog.style.setProperty("--type-color", TYPE_COLORS[types[0]] || "#888");
+
+        // Top section
+        const top = el("div", "detail-top");
+        const close = el("button", "close", "×");
+        close.type = "button";
+        close.setAttribute("aria-label", "Close");
+        close.onclick = () => dialog.close();
+
+        const img = el("img");
+        img.src = d.sprites.other?.["official-artwork"]?.front_default || d.sprites.front_default || ARTWORK(p.id);
+        img.alt = prettyName(d.name);
+
+        const title = el("h2", "", prettyName(d.name));
+        title.id = "detailName";
+        const typeRow = el("div", "types");
+        typeRow.append(...types.map(typeBadge));
+        top.append(close, img, el("div", "num", pad(d.id)), title, typeRow);
+
+        // Body
+        const body = el("div", "detail-body");
+        const flavor = el("p", "flavor", "");
+        body.append(flavor);
+
+        const facts = el("dl", "facts");
+        const fact = (label, value) => {
+          const box = el("div");
+          box.append(el("dt", "", label), el("dd", "", value));
+          return box;
+        };
+        facts.append(
+          fact("Height", `${(d.height / 10).toFixed(1)} m`),
+          fact("Weight", `${(d.weight / 10).toFixed(1)} kg`),
+          fact("Abilities", d.abilities.map((a) => a.ability.name.replace(/-/g, " ")).join(", "))
+        );
+        body.append(facts, el("h3", "", "Base stats"));
+
+        for (const s of d.stats) {
+          const row = el("div", "stat");
+          const bar = el("div", "bar");
+          const fill = el("span");
+          fill.style.width = `${Math.min(100, (s.base_stat / 200) * 100)}%`;
+          bar.append(fill);
+          row.append(el("span", "label", STAT_LABELS[s.stat.name] || s.stat.name), el("span", "val", s.base_stat), bar);
+          body.append(row);
+        }
+
+        dialog.replaceChildren(top, body);
+
+        getJSON(d.species.url).then((species) => {
+          const entry = species.flavor_text_entries.find((e) => e.language.name === "en");
+          if (entry) flavor.textContent = entry.flavor_text.replace(/[\f\n\r]+/g, " ");
+        }).catch(() => {});
+      } catch (err) {
+        dialog.replaceChildren(el("div", "status", "Couldn’t load this Pokémon. Try again in a moment."));
+      }
+    }
+
+    // Close the dialog when clicking the dark backdrop
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+
+    // ---------- Wire up ----------
+    searchEl.addEventListener("input", applyFilters);
+    typeEl.addEventListener("change", applyFilters);
+    moreBtn.addEventListener("click", loadPage);
+
+    loadPage();
+  </script>
+</body>
+</html>
