@@ -13,7 +13,7 @@
   <style>
     :root {
       --bg: #000000;
-      --raised: #1a1a1a;
+      --raised: #121212;
       --line: #2d2d2d;
       --dim: #8a8a8a;
       --text: #d9d9d9;
@@ -22,7 +22,7 @@
     @media (prefers-color-scheme: light) {
       :root {
         --bg: #ffffff;
-        --raised: #f2f2f2;
+        --raised: #f4f4f4;
         --line: #d4d4d4;
         --dim: #666666;
         --text: #262626;
@@ -30,8 +30,14 @@
       }
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* --tc is the current element's type color (set from JS).
+       --ink is that color adjusted so it stays readable on the background. */
+    *, ::before, ::after { --ink: var(--tc, var(--bright)); }
+    @media (prefers-color-scheme: light) {
+      *, ::before, ::after { --ink: color-mix(in srgb, var(--tc, var(--bright)) 72%, #000); }
+    }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
 
     body {
@@ -51,16 +57,14 @@
       text-underline-offset: 4px;
     }
     a:hover { background: var(--bright); color: var(--bg); text-decoration: none; }
-    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
-      outline: 1px solid var(--bright);
-      outline-offset: 2px;
-    }
+    :focus-visible { outline: 1px solid var(--bright); outline-offset: 2px; }
 
     .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 20px 64px; }
 
     /* ---------- Header ---------- */
     .path { color: var(--dim); }
     .path a { color: var(--bright); }
+    .path .cmd { color: var(--bright); }
     h1 {
       font-size: clamp(2.2rem, 7vw, 3.5rem);
       font-weight: 700;
@@ -69,36 +73,66 @@
       color: var(--bright);
       margin: 14px 0 6px;
     }
-    .sub { color: var(--dim); margin-bottom: 32px; }
+    .progress { color: var(--dim); margin-bottom: 28px; min-height: 1.6em; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+    .progress .fill { color: var(--bright); }
+    .cursor {
+      display: inline-block; width: .6em; height: 1.1em; vertical-align: text-bottom;
+      background: var(--bright); margin-left: 4px;
+      animation: blink 1.1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
 
     /* ---------- Controls ---------- */
     .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px 24px;
-      align-items: center;
-      padding: 14px 0;
+      padding: 14px 0 16px;
       border-top: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
       margin-bottom: 24px;
+      display: grid;
+      gap: 14px;
     }
-    .field { display: flex; align-items: center; gap: 1ch; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
+    .field { display: flex; align-items: center; gap: 1ch; flex: 1 1 280px; }
     .field label { color: var(--dim); }
-    .search { flex: 1 1 280px; }
-    .controls input, .controls select {
+    .field input {
       font: inherit;
+      width: 100%;
       color: var(--bright);
       background: transparent;
       border: none;
       border-bottom: 1px solid var(--line);
       border-radius: 0;
       padding: 4px 0;
+      transition: border-color .2s;
     }
-    .controls input { width: 100%; }
-    .controls input::placeholder { color: var(--dim); opacity: .7; }
-    .controls select { cursor: pointer; padding-right: 4px; }
-    .controls select option { background: var(--bg); color: var(--text); }
-    .count { color: var(--dim); margin-left: auto; }
+    .field input:focus { outline: none; border-bottom-color: var(--bright); }
+    .field input::placeholder { color: var(--dim); opacity: .7; }
+    .count { color: var(--dim); }
+
+    /* Type filter chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 3px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color .2s, background-color .2s, color .2s;
+      animation: boot .3s ease-out backwards;
+    }
+    .chip::before { content: ""; width: 8px; height: 8px; background: var(--tc, var(--bright)); }
+    .chip .n { color: var(--dim); }
+    .chip:hover { border-color: var(--tc, var(--bright)); }
+    .chip[aria-pressed="true"] {
+      color: var(--bright);
+      border-color: var(--tc, var(--bright));
+      background: color-mix(in srgb, var(--tc, var(--bright)) 18%, transparent);
+    }
 
     /* ---------- Grid ---------- */
     .grid {
@@ -114,30 +148,54 @@
       cursor: pointer;
       background: transparent;
       border: 1px solid var(--line);
+      border-top: 2px solid color-mix(in srgb, var(--tc, var(--line)) 70%, transparent);
       padding: 12px;
       display: flex;
       flex-direction: column;
+      transition: border-color .25s, transform .25s, background-color .25s;
+      animation: boot .45s ease-out backwards;
+      animation-delay: calc(min(var(--i, 0), 40) * 22ms);
     }
     .card[hidden] { display: none; }
-    .card:hover, .card:focus-visible { border-color: var(--bright); }
+    .card:hover, .card:focus-visible {
+      border-color: var(--tc, var(--bright));
+      background: color-mix(in srgb, var(--tc, var(--bright)) 6%, transparent);
+      transform: translateY(-3px);
+    }
 
-    /* Artwork stays grayscale until you point at it */
-    .card img {
+    @keyframes boot {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Artwork */
+    .art { position: relative; margin-bottom: 10px; }
+    .art::before {
+      content: "";
+      position: absolute; inset: 8%;
+      background: radial-gradient(closest-side, color-mix(in srgb, var(--tc, transparent) 45%, transparent), transparent);
+      opacity: 0;
+      transition: opacity .35s;
+    }
+    .art img {
+      position: relative;
+      display: block;
       width: 100%;
       aspect-ratio: 1;
       object-fit: contain;
       filter: grayscale(1) contrast(1.05);
       opacity: .85;
-      margin-bottom: 10px;
+      transition: filter .35s, opacity .35s, transform .35s;
     }
-    .card:hover img, .card:focus-visible img { filter: none; opacity: 1; }
+    .card:hover .art::before, .card:focus-visible .art::before { opacity: 1; }
+    .card:hover .art img, .card:focus-visible .art img { filter: none; opacity: 1; transform: scale(1.06); }
 
     .num { color: var(--dim); font-size: 13px; }
     .name { color: var(--bright); font-weight: 500; }
 
-    .types { display: flex; flex-wrap: wrap; gap: 0 1ch; margin-top: 4px; font-size: 13px; color: var(--text); min-height: 1.6em; }
-    .type::before { content: "["; color: var(--dim); }
-    .type::after { content: "]"; color: var(--dim); }
+    .types { display: flex; flex-wrap: wrap; gap: 2px 1.5ch; margin-top: 4px; font-size: 13px; min-height: 1.6em; }
+    .type { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+    .type::before { content: ""; width: 8px; height: 8px; background: var(--tc); }
     .types .pending { color: var(--dim); }
 
     /* ---------- Status + buttons ---------- */
@@ -149,6 +207,7 @@
       background: transparent;
       border: 1px solid var(--line);
       padding: 8px 18px;
+      transition: background-color .2s, color .2s, border-color .2s;
     }
     .btn:hover { background: var(--bright); color: var(--bg); border-color: var(--bright); }
     .btn:disabled { color: var(--dim); cursor: default; background: transparent; border-color: var(--line); }
@@ -160,39 +219,86 @@
       font: inherit;
       color: var(--text);
       background: var(--bg);
-      border: 1px solid var(--bright);
+      border: 1px solid var(--tc, var(--bright));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--tc, transparent) 25%, transparent), 0 0 48px color-mix(in srgb, var(--tc, transparent) 22%, transparent);
       padding: 0;
-      width: min(560px, calc(100% - 32px));
-      max-height: calc(100% - 32px);
+      width: min(580px, calc(100% - 24px));
+      max-height: calc(100% - 24px);
       margin: auto;
+      transition: border-color .4s, box-shadow .4s;
     }
-    dialog::backdrop { background: rgba(0, 0, 0, .75); }
+    dialog[open] { animation: crt .3s ease-out both; }
+    dialog::backdrop { background: rgba(0, 0, 0, .78); animation: fade .3s both; }
+    @keyframes crt {
+      from { clip-path: inset(49% 0 49% 0); opacity: .4; }
+      60%  { clip-path: inset(0 0 0 0); opacity: 1; }
+      to   { clip-path: inset(0 0 0 0); }
+    }
+    @keyframes fade { from { opacity: 0; } }
 
     .d-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 2ch;
-      padding: 8px 16px;
+      flex-wrap: wrap;
+      gap: 4px 2ch;
+      padding: 8px 12px 8px 16px;
       border-bottom: 1px solid var(--line);
       color: var(--dim);
       font-size: 13px;
     }
-    .close {
+    .d-bar .path-tc { color: var(--ink); }
+    .d-actions { display: flex; gap: 2px; }
+    .d-actions button {
       font: inherit;
       color: var(--bright);
       background: transparent;
       border: none;
       cursor: pointer;
-      padding: 2px 6px;
+      padding: 2px 8px;
     }
-    .close:hover { background: var(--bright); color: var(--bg); }
+    .d-actions button:hover { background: var(--bright); color: var(--bg); }
 
-    .d-body { padding: 20px 20px 24px; }
-    .d-head { display: grid; grid-template-columns: 140px 1fr; gap: 20px; align-items: center; margin-bottom: 18px; }
-    .d-head img { width: 140px; height: 140px; object-fit: contain; }
-    .d-head h2 { font-size: 1.6rem; font-weight: 700; color: var(--bright); letter-spacing: -0.02em; line-height: 1.2; }
-    .flavor { color: var(--dim); margin-bottom: 18px; }
+    .d-body { padding: 20px 20px 16px; animation: fade .25s both; }
+    .d-head { display: grid; grid-template-columns: 150px 1fr; gap: 20px; align-items: center; margin-bottom: 18px; }
+    .d-head h2 { font-size: 1.7rem; font-weight: 700; color: var(--bright); letter-spacing: -0.02em; line-height: 1.2; }
+    .d-head .num { font-size: 14px; color: var(--ink); }
+
+    /* Scan effect */
+    .d-art { position: relative; width: 150px; height: 150px; overflow: hidden; }
+    .d-art::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(closest-side, color-mix(in srgb, var(--tc, transparent) 35%, transparent), transparent),
+        repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--tc, var(--line)) 12%, transparent) 3px 4px);
+    }
+    .d-art img {
+      position: relative;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      animation: colorize 1s ease-out both;
+    }
+    .d-art::after {
+      content: "";
+      position: absolute; left: 0; right: 0; top: 0;
+      height: 2px;
+      background: var(--ink);
+      box-shadow: 0 0 12px 2px var(--tc, var(--bright));
+      animation: scan .8s ease-in-out both;
+    }
+    @keyframes scan {
+      from { transform: translateY(-4px); opacity: 1; }
+      90%  { transform: translateY(150px); opacity: 1; }
+      to   { transform: translateY(150px); opacity: 0; }
+    }
+    @keyframes colorize {
+      from { filter: grayscale(1) brightness(.4); opacity: .4; }
+      70%  { filter: grayscale(1) brightness(1); opacity: 1; }
+      to   { filter: none; }
+    }
+
+    .flavor { color: var(--dim); margin-bottom: 18px; min-height: 3.2em; }
 
     .kv { display: grid; grid-template-columns: 11ch 1fr; gap: 2px 0; margin-bottom: 20px; }
     .kv dt { color: var(--dim); }
@@ -201,9 +307,13 @@
     .stats-title { color: var(--dim); font-weight: 400; font-size: 15px; margin-bottom: 6px; }
     .stat { display: grid; grid-template-columns: 9ch 4ch 1fr; gap: 0 1ch; white-space: nowrap; }
     .stat .label { color: var(--dim); }
-    .stat .val { color: var(--bright); text-align: right; }
-    .stat .bar { color: var(--bright); overflow: hidden; letter-spacing: -0.02em; }
+    .stat .val { color: var(--bright); text-align: right; font-variant-numeric: tabular-nums; }
+    .stat .bar { color: var(--ink); overflow: hidden; letter-spacing: -0.02em; }
     .stat .bar .empty { color: var(--line); }
+    .stat.total { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+    .stat.total .val { color: var(--ink); font-weight: 500; }
+
+    .d-hint { color: var(--dim); font-size: 12px; padding: 0 20px 14px; }
 
     footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
@@ -211,36 +321,43 @@
       body { font-size: 14px; }
       .wrap { padding-top: 32px; }
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .count { margin-left: 0; }
-      .d-head { grid-template-columns: 96px 1fr; gap: 14px; }
-      .d-head img { width: 96px; height: 96px; }
+      .d-head { grid-template-columns: 104px 1fr; gap: 14px; }
+      .d-art { width: 104px; height: 104px; }
+      @keyframes scan {
+        from { transform: translateY(-4px); opacity: 1; }
+        90%  { transform: translateY(104px); opacity: 1; }
+        to   { transform: translateY(104px); opacity: 0; }
+      }
+      .d-hint { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after { animation: none !important; transition: none !important; }
+      .d-art::after { display: none; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <p class="path">adlune:<a href="/" title="Back to adrianlara.dev">~</a>/pokedex$</p>
+      <p class="path">adlune:<a href="/" title="Back to adrianlara.dev">~</a>/pokedex$ <span class="cmd">./pokedex --from 21</span></p>
       <h1>Pokédex</h1>
-      <p class="sub">Pokémon data from PokéAPI, starting at #21. Select one to see its stats.</p>
+      <p class="progress" id="progress" aria-live="polite">connecting to pokeapi.co<span class="cursor" aria-hidden="true"></span></p>
     </header>
 
     <div class="controls">
-      <div class="field search">
-        <label for="search">search</label>
-        <input id="search" type="search" placeholder="name or number" autocomplete="off" spellcheck="false">
+      <div class="row">
+        <div class="field">
+          <label for="search">search</label>
+          <input id="search" type="search" placeholder="name or number" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="count" id="count" aria-live="polite"></p>
       </div>
-      <div class="field">
-        <label for="typeFilter">type</label>
-        <select id="typeFilter">
-          <option value="">all</option>
-        </select>
-      </div>
-      <p class="count" id="count" aria-live="polite"></p>
+      <div class="chips" id="chips" role="group" aria-label="Filter by type"></div>
     </div>
 
     <div class="grid" id="grid"></div>
-    <div class="status" id="status">Loading Pokémon…</div>
+    <div class="status" id="status" hidden></div>
     <button class="btn more" id="more" hidden>Load more</button>
 
     <footer>
@@ -249,7 +366,18 @@
     </footer>
   </div>
 
-  <dialog id="detail" aria-labelledby="detailName"></dialog>
+  <dialog id="detail" aria-labelledby="detailName">
+    <div class="d-bar">
+      <span>pokedex/<span class="path-tc" id="dPath"></span></span>
+      <div class="d-actions">
+        <button type="button" id="prevBtn" aria-label="Previous Pokémon">‹ prev</button>
+        <button type="button" id="nextBtn" aria-label="Next Pokémon">next ›</button>
+        <button type="button" id="closeBtn">close [esc]</button>
+      </div>
+    </div>
+    <div id="dContent"></div>
+    <p class="d-hint">Use ← and → to browse.</p>
+  </dialog>
 
   <script>
     // ---------- Config ----------
@@ -259,6 +387,16 @@
     const CONCURRENCY = 8;   
     const BAR_WIDTH = 20;    
     const BAR_MAX = 200;     
+    const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const TYPE_COLORS = {
+      normal: "#a8a77a", fire: "#ee8130", water: "#6390f0", electric: "#f7d02c",
+      grass: "#7ac74c", ice: "#96d9d6", fighting: "#c22e28", poison: "#a33ea1",
+      ground: "#e2bf65", flying: "#a98ff3", psychic: "#f95587", bug: "#a6b91a",
+      rock: "#b6a136", ghost: "#735797", dragon: "#6f35fc", dark: "#705746",
+      steel: "#b7b7ce", fairy: "#d685ad"
+    };
+    const typeColor = (type) => TYPE_COLORS[type] || "#888888";
 
     const STAT_LABELS = {
       "hp": "hp", "attack": "attack", "defense": "defense",
@@ -267,19 +405,20 @@
 
     // ---------- State ----------
     let nextUrl = START_URL;
+    let activeType = "";
+    let current = null;            
+    let animToken = 0;             
     const pokemon = [];            
     const cards = new Map();       
     const detailCache = new Map(); 
-    const seenTypes = new Set();
+    const chips = new Map();       
 
     // ---------- Elements ----------
-    const grid = document.getElementById("grid");
-    const statusEl = document.getElementById("status");
-    const moreBtn = document.getElementById("more");
-    const searchEl = document.getElementById("search");
-    const typeEl = document.getElementById("typeFilter");
-    const countEl = document.getElementById("count");
-    const dialog = document.getElementById("detail");
+    const $ = (id) => document.getElementById(id);
+    const grid = $("grid"), statusEl = $("status"), moreBtn = $("more");
+    const searchEl = $("search"), countEl = $("count"), chipsEl = $("chips");
+    const progressEl = $("progress");
+    const dialog = $("detail"), dContent = $("dContent"), dPath = $("dPath");
 
     // ---------- Helpers ----------
     const idFromUrl = (url) => Number(url.split("/").filter(Boolean).pop());
@@ -298,14 +437,10 @@
       return node;
     }
 
-    const typeTag = (type) => el("span", "type", type);
-
-    function asciiBar(value) {
-      const filled = Math.max(1, Math.min(BAR_WIDTH, Math.round((value / BAR_MAX) * BAR_WIDTH)));
-      const bar = el("span", "bar");
-      bar.setAttribute("aria-hidden", "true");
-      bar.append("█".repeat(filled), el("span", "empty", "░".repeat(BAR_WIDTH - filled)));
-      return bar;
+    function typeTag(type) {
+      const tag = el("span", "type", type);
+      tag.style.setProperty("--tc", typeColor(type));
+      return tag;
     }
 
     async function getJSON(url) {
@@ -332,55 +467,95 @@
       await Promise.all(runners);
     }
 
-    // ---------- Rendering ----------
-    function createCard(p) {
+    // ---------- Progress line ----------
+    function setProgress(done, total) {
+      const filled = Math.round((done / total) * 16);
+      progressEl.replaceChildren(
+        "scanning types ",
+        el("span", "fill", "█".repeat(filled)),
+        "░".repeat(16 - filled),
+        ` ${done}/${total}`
+      );
+    }
+    function setReady() {
+      const cursor = el("span", "cursor");
+      cursor.setAttribute("aria-hidden", "true");
+      progressEl.replaceChildren(`${pokemon.length} entries ready. Select one to see its stats.`, cursor);
+    }
+
+    // ---------- Type filter chips ----------
+    function makeChip(type) {
+      const button = el("button", "chip");
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(activeType === type));
+      if (type) button.style.setProperty("--tc", typeColor(type));
+      const n = el("span", "n");
+      button.append(type || "all", n);
+      button.addEventListener("click", () => {
+        activeType = activeType === type ? "" : type;
+        for (const [t, c] of chips) c.button.setAttribute("aria-pressed", String(t === activeType));
+        applyFilters();
+      });
+      return { button, n, count: 0 };
+    }
+
+    function countType(type) {
+      if (!chips.has(type)) {
+        const chip = makeChip(type);
+        chips.set(type, chip);
+        // keep chips alphabetical, after "all"
+        const after = [...chips.keys()].filter((t) => t && t < type).sort().pop();
+        const anchor = after ? chips.get(after).button : chips.get("").button;
+        anchor.after(chip.button);
+      }
+      const chip = chips.get(type);
+      chip.n.textContent = String(++chip.count);
+    }
+
+    // ---------- Cards ----------
+    function createCard(p, i) {
       const card = el("button", "card");
       card.type = "button";
+      card.style.setProperty("--i", i);
       card.setAttribute("aria-label", `${prettyName(p.name)}, ${pad(p.id)}. Show details`);
 
+      const art = el("div", "art");
       const img = el("img");
       img.src = ARTWORK(p.id);
       img.alt = "";
       img.loading = "lazy";
       img.width = 160; img.height = 160;
+      art.append(img);
 
       const types = el("div", "types");
-      types.append(el("span", "pending", "loading…"));
+      types.append(el("span", "pending", "scanning…"));
 
-      card.append(img, el("span", "num", pad(p.id)), el("span", "name", prettyName(p.name)), types);
+      card.append(art, el("span", "num", pad(p.id)), el("span", "name", prettyName(p.name)), types);
       card.addEventListener("click", () => openDetail(p));
       cards.set(p.id, card);
       return card;
     }
 
     function fillTypes(p) {
-      const box = cards.get(p.id).querySelector(".types");
-      box.replaceChildren(...p.types.map(typeTag));
-    }
-
-    function addTypeOption(type) {
-      if (seenTypes.has(type)) return;
-      seenTypes.add(type);
-      const options = [...seenTypes].sort();
-      const current = typeEl.value;
-      typeEl.replaceChildren(new Option("all", ""), ...options.map((t) => new Option(t, t)));
-      typeEl.value = current;
+      const card = cards.get(p.id);
+      card.style.setProperty("--tc", typeColor(p.types[0]));
+      card.querySelector(".types").replaceChildren(...p.types.map(typeTag));
     }
 
     function applyFilters() {
       const q = searchEl.value.trim().toLowerCase().replace(/^#/, "");
-      const type = typeEl.value;
       let shown = 0;
 
       for (const p of pokemon) {
         const matchesText = !q || p.name.includes(q) || prettyName(p.name).toLowerCase().includes(q) || String(p.id) === q.replace(/^0+/, "");
-        const matchesType = !type || (p.types && p.types.includes(type));
+        const matchesType = !activeType || (p.types && p.types.includes(activeType));
         const visible = matchesText && matchesType;
         cards.get(p.id).hidden = !visible;
         if (visible) shown++;
       }
 
       countEl.textContent = `${shown} of ${pokemon.length} shown`;
+      chips.get("").n.textContent = String(pokemon.length);
       if (pokemon.length && shown === 0) {
         statusEl.hidden = false;
         statusEl.textContent = "No Pokémon match. Try a different name, number or type.";
@@ -408,17 +583,25 @@
         moreBtn.disabled = false;
         moreBtn.textContent = "Load more";
 
-        // Fill in types in the background
+        // Fill in types in the background, showing progress in the header
+        let done = 0;
+        setProgress(0, batch.length);
         await runPool(batch, async (p) => {
-          const d = await getDetails(p);
-          p.types = d.types.map((t) => t.type.name);
-          p.types.forEach(addTypeOption);
-          fillTypes(p);
+          try {
+            const d = await getDetails(p);
+            p.types = d.types.map((t) => t.type.name);
+            p.types.forEach(countType);
+            fillTypes(p);
+          } finally {
+            setProgress(++done, batch.length);
+          }
         }, CONCURRENCY);
         applyFilters();
+        setReady();
       } catch (err) {
         moreBtn.disabled = false;
         moreBtn.textContent = "Load more";
+        progressEl.textContent = "connection failed";
         statusEl.hidden = false;
         const retry = el("button", "btn", "Retry");
         retry.onclick = loadPage;
@@ -427,78 +610,145 @@
     }
 
     // ---------- Detail dialog ----------
-    function dialogBar(label) {
-      const bar = el("div", "d-bar");
-      const close = el("button", "close", "close [esc]");
-      close.type = "button";
-      close.onclick = () => dialog.close();
-      bar.append(el("span", "", label), close);
-      return bar;
+    // Fills each ASCII bar and counts its number up, one stat after another.
+    function animateStats(rows) {
+      const token = ++animToken;
+      const finalState = () => rows.forEach((r) => r.set(r.value));
+      if (REDUCED_MOTION) return finalState();
+
+      const start = performance.now();
+      const DURATION = 650, STAGGER = 90, DELAY = 350;
+      function frame(now) {
+        if (token !== animToken) return;
+        let running = false;
+        rows.forEach((r, i) => {
+          const t = Math.min(1, Math.max(0, (now - start - DELAY - i * STAGGER) / DURATION));
+          const eased = 1 - Math.pow(1 - t, 3);
+          r.set(Math.round(r.value * eased));
+          if (t < 1) running = true;
+        });
+        if (running) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function statRow(label, value, isTotal) {
+      const row = el("div", isTotal ? "stat total" : "stat");
+      row.setAttribute("aria-label", `${label}: ${value}`);
+      const val = el("span", "val", "0");
+      row.append(el("span", "label", label), val);
+
+      let fill = null, empty = null;
+      if (!isTotal) {
+        const bar = el("span", "bar");
+        bar.setAttribute("aria-hidden", "true");
+        fill = el("span", "", "");
+        empty = el("span", "empty", "░".repeat(BAR_WIDTH));
+        bar.append(fill, empty);
+        row.append(bar);
+      } else {
+        row.append(el("span"));
+      }
+
+      const set = (v) => {
+        val.textContent = String(v);
+        if (fill) {
+          const filled = v === 0 ? 0 : Math.max(1, Math.min(BAR_WIDTH, Math.round((v / BAR_MAX) * BAR_WIDTH)));
+          fill.textContent = "█".repeat(filled);
+          empty.textContent = "░".repeat(BAR_WIDTH - filled);
+        }
+      };
+      return { row, value, set };
     }
 
     async function openDetail(p) {
-      dialog.replaceChildren(dialogBar(`pokedex/${p.name}`), el("div", "status d-body", "Loading…"));
-      dialog.showModal();
+      current = p;
+      dPath.textContent = `${String(p.id).padStart(4, "0")}-${p.name}`;
+      if (p.types) dialog.style.setProperty("--tc", typeColor(p.types[0]));
+      dContent.replaceChildren(el("div", "status d-body", "Scanning…"));
+      if (!dialog.open) dialog.showModal();
 
       try {
         const d = await getDetails(p);
+        if (current !== p) return; // you already moved on to another Pokémon
+
+        const types = d.types.map((t) => t.type.name);
+        dialog.style.setProperty("--tc", typeColor(types[0]));
 
         // Header
         const head = el("div", "d-head");
+        const art = el("div", "d-art");
         const img = el("img");
         img.src = d.sprites.other?.["official-artwork"]?.front_default || d.sprites.front_default || ARTWORK(p.id);
         img.alt = prettyName(d.name);
+        art.append(img);
 
         const info = el("div");
         const title = el("h2", "", prettyName(d.name));
         title.id = "detailName";
-        const types = el("div", "types");
-        types.append(...d.types.map((t) => typeTag(t.type.name)));
-        info.append(el("p", "num", pad(d.id)), title, types);
-        head.append(img, info);
+        const typeRow = el("div", "types");
+        typeRow.append(...types.map(typeTag));
+        info.append(el("p", "num", pad(d.id)), title, typeRow);
+        head.append(art, info);
 
         const flavor = el("p", "flavor");
 
         // Key/value facts
         const kv = el("dl", "kv");
-        const row = (k, v) => kv.append(el("dt", "", k), el("dd", "", v));
-        row("height", `${(d.height / 10).toFixed(1)} m`);
-        row("weight", `${(d.weight / 10).toFixed(1)} kg`);
-        row("abilities", d.abilities.map((a) => a.ability.name).join(", "));
+        const fact = (k, v) => kv.append(el("dt", "", k), el("dd", "", v));
+        fact("height", `${(d.height / 10).toFixed(1)} m`);
+        fact("weight", `${(d.weight / 10).toFixed(1)} kg`);
+        fact("abilities", d.abilities.map((a) => a.ability.name).join(", "));
 
-        // ASCII stat bars
+        // Base stats as animated ASCII bars
         const stats = el("div");
         stats.append(el("h3", "stats-title", "base stats"));
-        for (const s of d.stats) {
-          const line = el("div", "stat");
-          line.setAttribute("aria-label", `${STAT_LABELS[s.stat.name] || s.stat.name}: ${s.base_stat}`);
-          line.append(
-            el("span", "label", STAT_LABELS[s.stat.name] || s.stat.name),
-            el("span", "val", String(s.base_stat)),
-            asciiBar(s.base_stat)
-          );
-          stats.append(line);
-        }
+        const rows = d.stats.map((s) => statRow(STAT_LABELS[s.stat.name] || s.stat.name, s.base_stat));
+        const total = statRow("total", d.stats.reduce((sum, s) => sum + s.base_stat, 0), true);
+        stats.append(...rows.map((r) => r.row), total.row);
 
         const body = el("div", "d-body");
         body.append(head, flavor, kv, stats);
-        dialog.replaceChildren(dialogBar(`pokedex/${d.name}`), body);
+        dContent.replaceChildren(body);
+        animateStats([...rows, total]);
 
         getJSON(d.species.url).then((species) => {
+          if (current !== p) return;
           const entry = species.flavor_text_entries.find((e) => e.language.name === "en");
           if (entry) flavor.textContent = entry.flavor_text.replace(/[\f\n\r]+/g, " ");
         }).catch(() => {});
       } catch (err) {
-        dialog.replaceChildren(dialogBar(`pokedex/${p.name}`), el("div", "status d-body", "Couldn’t load this Pokémon. Close this and select it again."));
+        if (current === p) dContent.replaceChildren(el("div", "status d-body", "Couldn’t load this Pokémon. Try again in a moment."));
       }
     }
 
-    // Close the dialog when clicking the backdrop
+    // Browse through the Pokémon currently shown in the grid
+    function step(dir) {
+      const list = pokemon.filter((p) => !cards.get(p.id).hidden);
+      if (!list.length || !current) return;
+      const i = list.indexOf(current);
+      openDetail(list[(i + dir + list.length) % list.length]);
+    }
+
+    $("prevBtn").addEventListener("click", () => step(-1));
+    $("nextBtn").addEventListener("click", () => step(1));
+    $("closeBtn").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+    });
     dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", () => {
+      animToken++;
+      if (current) cards.get(current.id)?.focus({ preventScroll: true });
+    });
 
     // ---------- Wire up ----------
+    const allChip = makeChip("");
+    chips.set("", allChip);
+    chipsEl.append(allChip.button);
+
     searchEl.addEventListener("input", applyFilters);
-    typeEl.addEventListener("change", applyFilters);
     moreBtn.addEventListener("click", loadPage);
 
     loadPage();
