@@ -4,7 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adrian Lara</title>
-  <meta name="description" content="Data Science student at UNAM, ENES Morelia. Projects and contact info.">
+  <meta name="description" content="Data Science student at UNAM, ENES Morelia, working on data science and cybersecurity projects.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://adrianlara.dev/">
+  <meta property="og:title" content="Adrian Lara">
+  <meta property="og:description" content="Data Science student at UNAM, ENES Morelia, working on data science and cybersecurity projects.">
+  <meta property="og:image" content="https://adrianlara.dev/assets/network.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M7 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3Cpath d='M16 23h9' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,17 +23,21 @@
   <style>
     :root {
       --bg: #000000;
-      --raised: #1a1a1a;
+      --raised: #141414;
       --line: #2d2d2d;
       --dim: #8a8a8a;
       --text: #d9d9d9;
       --bright: #ffffff;
-      --paper: #d7d7d7;
+      --paper: #d7d7d7; 
+
+      --bar-h: 52px;    
+      --wrap: 1120px;   
+      --gutter: clamp(20px, 4vw, 48px);
     }
     @media (prefers-color-scheme: light) {
       :root {
         --bg: #ffffff;
-        --raised: #f2f2f2;
+        --raised: #f4f4f4;
         --line: #d4d4d4;
         --dim: #666666;
         --text: #262626;
@@ -34,11 +47,15 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      scroll-behavior: smooth;
+      scroll-padding-top: calc(var(--bar-h) + 24px);
+      font-size: clamp(14.5px, 0.5vw + 10px, 18px);
+    }
 
     body {
       font-family: "Fira Code", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-      font-size: 15px;
       line-height: 1.7;
       background: var(--bg);
       color: var(--text);
@@ -53,8 +70,11 @@
       text-underline-offset: 4px;
     }
     a:hover { background: var(--bright); color: var(--bg); text-decoration: none; }
-    a:focus-visible { outline: 1px solid var(--bright); outline-offset: 3px; }
+    :focus-visible { outline: 1px solid var(--bright); outline-offset: 3px; }
 
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gutter); }
+
+    /* shell prompt */
     .ps1 { color: var(--dim); user-select: none; }
     .cmd { color: var(--bright); font-weight: 500; }
 
@@ -69,12 +89,91 @@
     }
     @keyframes blink { 50% { opacity: 0; } }
 
+    /* topbar */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      height: var(--bar-h);
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      font-size: 0.875rem;
+    }
+    .bar {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 2ch;
+    }
+    .home { text-decoration: none; color: var(--bright); font-weight: 500; margin-right: auto; }
+    .home .ps1 { font-weight: 400; }
+
+    .links { list-style: none; display: flex; gap: 0.5ch; }
+    .links a, .menu-btn {
+      font: inherit;
+      color: var(--dim);
+      background: transparent;
+      border: none;
+      text-decoration: none;
+      padding: 4px 1ch;
+      cursor: pointer;
+    }
+    .links a:hover, .menu-btn:hover { background: var(--bright); color: var(--bg); }
+    .links a[aria-current="true"] { color: var(--bright); }
+    .links a[aria-current="true"]::before { content: "*"; }
+    .links a[aria-current="true"]:hover { color: var(--bg); }
+
+    .menu { position: relative; }
+    .menu-btn {
+      color: var(--bright);
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      gap: 1ch;
+    }
+    .menu-btn[aria-expanded="true"] { background: var(--bright); color: var(--bg); border-color: var(--bright); }
+    .caret { display: inline-block; transition: transform .2s; }
+    .menu-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
+    .label-narrow { display: none; }
+
+    .panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: 340px;
+      background: var(--bg);
+      border: 1px solid var(--bright);
+      padding: 6px;
+    }
+    .panel:not([hidden]) { animation: drop .16s ease-out; }
+    @keyframes drop { from { opacity: 0; transform: translateY(-6px); } }
+
+    .group + .group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+    .nav-group + .group { margin-top: 0; padding-top: 0; border-top: 0; } 
+    .group-title { color: var(--dim); padding: 4px 10px; }
+    .nav-group { display: none; } 
+    .group-title.side-title { display: none; }
+
+    .panel a {
+      display: block;
+      padding: 8px 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .panel a:hover, .panel a:focus-visible { background: var(--raised); color: var(--text); outline: none; }
+    .nav-group a { color: var(--bright); }
+    .side-head { display: flex; justify-content: space-between; gap: 2ch; }
+    .side-name { color: var(--bright); font-weight: 500; }
+    .panel a:hover .side-name { text-decoration: underline; text-underline-offset: 4px; }
+    .side-desc { display: block; color: var(--dim); }
+    .lang { color: var(--dim); }
+
     .hero {
       --p: 0;
       position: relative;
       height: 100vh;
       height: 100svh;
-      min-height: 520px;
+      min-height: 560px;
       overflow: hidden;
       background: var(--paper);
     }
@@ -90,7 +189,7 @@
       position: absolute;
       left: 0; right: 0; bottom: 0;
       width: 100%;
-      height: 80%;
+      height: 74%;
       object-fit: cover;
       object-position: center top;
     }
@@ -101,7 +200,7 @@
       background: var(--bg);
       opacity: var(--p);
     }
-
+    /* image fade */
     .hero::after {
       content: "";
       position: absolute;
@@ -111,6 +210,7 @@
       pointer-events: none;
     }
 
+    /* hero fading */
     .intro {
       position: absolute;
       inset: 0;
@@ -120,11 +220,10 @@
     }
     @keyframes lift { to { opacity: 0; visibility: hidden; } }
 
+    /* name */
     .hero-text {
       position: relative;
-      max-width: 72ch;
-      margin: 0 auto;
-      padding: 15vh 20px 0;
+      padding-top: calc(var(--bar-h) + 11vh);
       color: #ffffff;
       mix-blend-mode: difference;
       transform: translateY(calc(var(--p) * -48px));
@@ -132,17 +231,17 @@
       --dim: #8a8a8a;
     }
     .name {
-      font-size: clamp(2.6rem, 11vw, 5.5rem);
+      font-size: clamp(3rem, 9.5vw, 7.5rem);
       white-space: nowrap;
       font-weight: 700;
       line-height: 1;
-      letter-spacing: -0.04em;
-      margin: 20px 0 16px;
+      letter-spacing: -0.045em;
+      margin: 18px 0 18px -0.04em;
     }
-    .about-line { color: var(--dim); font-size: 16px; }
+    .about-line { color: var(--dim); font-size: 1.1rem; }
     .typing .reveal { visibility: hidden; }
 
-    /* "--More--" */
+    /* more button */
     .more {
       position: absolute;
       z-index: 1;
@@ -152,7 +251,7 @@
       background: #000000;
       color: #ffffff;
       padding: 2px 10px;
-      font-size: 14px;
+      font-size: 0.875rem;
       text-decoration: none;
       opacity: calc(1 - var(--p) * 4);
       animation: rise .6s ease-out 1.6s backwards;
@@ -160,38 +259,69 @@
     .more:hover { background: #ffffff; color: #000000; }
     @keyframes rise { from { opacity: 0; translate: 0 8px; } }
 
-    /* ---------- Content ---------- */
-    main {
-      max-width: 72ch;
-      margin: 0 auto;
-      padding: 64px 20px 56px;
-    }
+    /* content*/
+    main { padding-top: 72px; padding-bottom: 56px; }
 
-    section { margin-bottom: 56px; scroll-margin-top: 32px; }
+    section { margin-bottom: 88px; }
 
     h2 {
-      font-size: 15px;
+      font-size: 1rem;
       font-weight: 400;
-      margin-bottom: 14px;
+      margin-bottom: 20px;
     }
 
     .out { padding-left: 2ch; }
-    .out p + p { margin-top: 12px; }
+
+    /* cat about.txt */
+    .intro-text { font-size: 1.3rem; line-height: 1.6; color: var(--bright); max-width: 46ch; }
 
     /* ls skills/ */
-    .listing { display: grid; grid-template-columns: 12ch 1fr; gap: 6px 0; }
+    .listing { display: grid; grid-template-columns: 12ch 1fr; gap: 10px 0; }
     .listing dt { color: var(--dim); }
-    .listing dd { display: flex; flex-wrap: wrap; gap: 0 2.5ch; color: var(--bright); }
+    .listing dd { display: flex; flex-wrap: wrap; gap: 0 3ch; color: var(--bright); }
 
     /* ls projects/ */
-    .projects { list-style: none; display: grid; gap: 22px; }
-    .project-head { display: flex; justify-content: space-between; gap: 2ch; flex-wrap: wrap; }
-    .project-head a { font-weight: 500; }
-    .lang { color: var(--dim); }
-    .project p { color: var(--text); margin-top: 2px; }
+    .projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+      gap: 16px;
+    }
+    .project {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color .2s, background-color .2s;
+    }
+    .project:hover, .project:focus-visible {
+      background: var(--raised);
+      color: var(--text);
+      border-color: var(--bright);
+      outline: none;
+    }
+    .project-head { display: flex; justify-content: space-between; align-items: baseline; gap: 2ch; flex-wrap: wrap; }
+    .project-name { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; color: var(--bright); overflow-wrap: anywhere; }
+    .project-desc { max-width: 62ch; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0 2ch; color: var(--dim); }
+    .action {
+      margin-top: auto;
+      align-self: flex-start;
+      padding: 4px 1ch;
+      border: 1px solid var(--line);
+      color: var(--bright);
+      transition: background-color .2s, color .2s, border-color .2s;
+    }
+    .project:hover .action, .project:focus-visible .action {
+      background: var(--bright);
+      color: var(--bg);
+      border-color: var(--bright);
+    }
 
     /* cat contact.txt */
-    .contact { display: grid; grid-template-columns: 10ch 1fr; gap: 4px 0; }
+    .contact { display: grid; grid-template-columns: 10ch 1fr; gap: 6px 0; }
     .contact dt { color: var(--dim); }
     .contact dd { overflow-wrap: anywhere; }
 
@@ -205,24 +335,82 @@
       gap: 8px;
     }
 
+    /* small screens */
+    @media (max-width: 760px) {
+      .links { display: none; }
+      .label-wide { display: none; }
+      .label-narrow { display: inline; }
+      .nav-group { display: block; }
+      .nav-group + .group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+      .group-title.side-title { display: block; }
+      .panel {
+        position: fixed;
+        top: var(--bar-h);
+        left: 0; right: 0;
+        width: auto;
+        border-width: 0 0 1px;
+        border-color: var(--line);
+        padding: 8px var(--gutter) 16px;
+      }
+      .nav-group a { padding: 10px; }
+    }
+
     @media (max-width: 520px) {
-      body { font-size: 14px; }
-      .hero-text { padding-top: 12vh; }
-      .hero-bg img { height: 68%; }
+      .hero-text { padding-top: calc(var(--bar-h) + 9vh); }
+      .hero-bg img { height: 64%; }
+      .intro-text { font-size: 1.15rem; }
       .listing { grid-template-columns: 1fr; gap: 0; }
-      .listing dd { margin-bottom: 10px; }
+      .listing dd { margin-bottom: 12px; }
+      .project { padding: 20px; }
+      .project-name { font-size: 1.25rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .cursor { animation: none; }
       .intro { display: none; }
+      .panel:not([hidden]) { animation: none; }
       .more { animation: none; }
       .hero-bg, .hero-text { transform: none; }
+      .caret, .project, .action { transition: none; }
     }
   </style>
 </head>
-<body>
+<body id="top">
+
+  <nav class="topbar" aria-label="Main">
+    <div class="wrap bar">
+      <a class="home" href="#top" aria-label="Adrian Lara, back to top"><span class="ps1">adlune:</span>~<span class="ps1">$</span></a>
+
+      <ul class="links">
+        <li><a href="#about">about</a></li>
+        <li><a href="#projects">projects</a></li>
+        <li><a href="#contact">contact</a></li>
+      </ul>
+
+      <div class="menu">
+        <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="menuPanel">
+          <span class="label-wide">side projects</span><span class="label-narrow">menu</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="panel" id="menuPanel" hidden>
+          <div class="group nav-group">
+            <a href="#about">about</a>
+            <a href="#projects">projects</a>
+            <a href="#contact">contact</a>
+          </div>
+          <div class="group">
+            <p class="group-title side-title"># side projects</p>
+            <a class="side" href="/pokedex/">
+              <span class="side-head"><span class="side-name">pokedex/</span><span class="lang">javascript</span></span>
+              <span class="side-desc">A searchable Pokédex built on PokéAPI.</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
 
   <header class="hero" id="hero">
     <div class="hero-bg" aria-hidden="true">
@@ -231,7 +419,7 @@
     <div class="shade" aria-hidden="true"></div>
     <div class="intro" aria-hidden="true"></div>
 
-    <div class="hero-text">
+    <div class="wrap hero-text">
       <p><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd" id="typed">whoami</span><span class="cursor" id="heroCursor" aria-hidden="true"></span></p>
       <div class="reveal">
         <h1 class="name">Adrian Lara</h1>
@@ -242,12 +430,12 @@
     <a class="more" href="#about">--More--</a>
   </header>
 
-  <main>
+  <main class="wrap">
 
     <section id="about">
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">cat about.txt</span></h2>
       <div class="out">
-        <p>
+        <p class="intro-text">
           Hi, I'm a student at UNAM studying Data Science. I like building
           projects that solve real problems, and I'm currently learning more
           about cybersecurity and networking.
@@ -255,7 +443,7 @@
       </div>
     </section>
 
-    <section>
+    <section id="skills">
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">ls skills/</span></h2>
       <dl class="out listing">
         <dt>languages/</dt>
@@ -265,27 +453,24 @@
       </dl>
     </section>
 
-    <section>
+    <section id="projects">
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">ls projects/</span></h2>
-      <ul class="out projects">
-        <li class="project">
+      <div class="out projects">
+        <a class="project" href="https://github.com/adlune/force-directed-NBAD" target="_blank" rel="noopener">
           <div class="project-head">
-            <a href="https://github.com/adlune/force-directed-NBAD">force-directed-NBAD/</a>
+            <h3 class="project-name">force-directed-NBAD/</h3>
             <span class="lang">python</span>
           </div>
-          <p>A force-directed graph simulation for detecting anomalies in network behavior using Fruchterman-Reingold.</p>
-        </li>
-        <li class="project">
-          <div class="project-head">
-            <a href="/pokedex/">pokedex/</a>
-            <span class="lang">javascript</span>
-          </div>
-          <p>A searchable Pokédex built on PokéAPI with plain JavaScript, filtering by type and showing base stats for each Pokémon.</p>
-        </li>
-      </ul>
+          <p class="project-desc">
+            A force-directed graph simulation based on Fruchterman-Reingold for detecting anomalies in network behavior.
+          </p>
+          <p class="tags"><span>anomaly-detection</span><span>graphs</span><span>network-security</span></p>
+          <span class="action">[ view repository ↗ ]</span>
+        </a>
+      </div>
     </section>
 
-    <section>
+    <section id="contact">
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">cat contact.txt</span></h2>
       <dl class="out contact">
         <dt>email</dt>
@@ -308,7 +493,49 @@
     document.getElementById("year").textContent = new Date().getFullYear();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // Fade 
+    // side projects
+    (function () {
+      const btn = document.getElementById("menuBtn");
+      const panel = document.getElementById("menuPanel");
+
+      function setOpen(open, returnFocus) {
+        btn.setAttribute("aria-expanded", String(open));
+        panel.hidden = !open;
+        if (!open && returnFocus) btn.focus();
+      }
+
+      btn.addEventListener("click", () => setOpen(panel.hidden));
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !panel.hidden) setOpen(false, true);
+      });
+      document.addEventListener("click", (e) => {
+        if (!panel.hidden && !btn.parentElement.contains(e.target)) setOpen(false);
+      });
+      panel.addEventListener("click", (e) => {
+        if (e.target.closest("a")) setOpen(false);
+      });
+    })();
+
+    // highlight
+    (function () {
+      const links = [...document.querySelectorAll('.links a, .nav-group a')];
+      const sections = ["about", "projects", "contact"].map((id) => document.getElementById(id));
+      const visible = new Set();
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((e) => e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id));
+        const current = sections.find((s) => visible.has(s.id));
+        links.forEach((a) => {
+          if (current && a.getAttribute("href") === "#" + current.id) a.setAttribute("aria-current", "true");
+          else a.removeAttribute("aria-current");
+        });
+      }, { rootMargin: "-35% 0px -55% 0px" });
+
+      sections.forEach((s) => observer.observe(s));
+    })();
+
+    // fade hero
     (function () {
       const hero = document.getElementById("hero");
       let ticking = false;
@@ -324,7 +551,7 @@
       update();
     })();
 
-    // Type out "whoami"
+    // whoami
     (function () {
       const hero = document.querySelector(".hero-text");
       const typed = document.getElementById("typed");
