@@ -30,8 +30,6 @@
       }
     }
 
-    /* --tc is the current element's type color (set from JS).
-       --ink is that color adjusted so it stays readable on the background. */
     *, ::before, ::after { --ink: var(--tc, var(--bright)); }
     @media (prefers-color-scheme: light) {
       *, ::before, ::after { --ink: color-mix(in srgb, var(--tc, var(--bright)) 72%, #000); }
@@ -61,7 +59,6 @@
 
     .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 20px 64px; }
 
-    /* ---------- Header ---------- */
     .path { color: var(--dim); }
     .path a { color: var(--bright); }
     .path .cmd { color: var(--bright); }
@@ -82,7 +79,6 @@
     }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* ---------- Controls ---------- */
     .controls {
       padding: 14px 0 16px;
       border-top: 1px solid var(--line);
@@ -109,7 +105,6 @@
     .field input::placeholder { color: var(--dim); opacity: .7; }
     .count { color: var(--dim); }
 
-    /* Type filter chips */
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip {
       font: inherit;
@@ -134,7 +129,6 @@
       background: color-mix(in srgb, var(--tc, var(--bright)) 18%, transparent);
     }
 
-    /* ---------- Grid ---------- */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
@@ -168,7 +162,6 @@
       to   { opacity: 1; transform: none; }
     }
 
-    /* Artwork */
     .art { position: relative; margin-bottom: 10px; }
     .art::before {
       content: "";
@@ -198,7 +191,6 @@
     .type::before { content: ""; width: 8px; height: 8px; background: var(--tc); }
     .types .pending { color: var(--dim); }
 
-    /* ---------- Status + buttons ---------- */
     .status { color: var(--dim); padding: 32px 0; }
     .btn {
       font: inherit;
@@ -214,7 +206,6 @@
     .status .btn { margin-top: 12px; }
     .more { display: block; margin: 32px auto 0; }
 
-    /* ---------- Detail dialog ---------- */
     dialog {
       font: inherit;
       color: var(--text);
@@ -264,7 +255,6 @@
     .d-head h2 { font-size: 1.7rem; font-weight: 700; color: var(--bright); letter-spacing: -0.02em; line-height: 1.2; }
     .d-head .num { font-size: 14px; color: var(--ink); }
 
-    /* Scan effect */
     .d-art { position: relative; width: 150px; height: 150px; overflow: hidden; }
     .d-art::before {
       content: "";
@@ -340,7 +330,7 @@
 <body>
   <div class="wrap">
     <header>
-      <p class="path">adlune:<a href="/" title="Back to adrianlara.dev">~</a>/pokedex$ <span class="cmd">./pokedex --from 21</span></p>
+      <p class="path">adlune:<a href="/" title="Back to adrianlara.dev">~</a>/pokedex$ <span class="cmd">./pokedex</span></p>
       <h1>Pokédex</h1>
       <p class="progress" id="progress" aria-live="polite">connecting to pokeapi.co<span class="cursor" aria-hidden="true"></span></p>
     </header>
@@ -380,13 +370,12 @@
   </dialog>
 
   <script>
-    // ---------- Config ----------
-    const START_URL = "https://pokeapi.co/api/v2/pokemon/?offset=20&limit=100";
+    const START_URL = "https://pokeapi.co/api/v2/pokemon/?offset=0&limit=100";
     const ARTWORK = (id) =>
       `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
-    const CONCURRENCY = 8;   
-    const BAR_WIDTH = 20;    
-    const BAR_MAX = 200;     
+    const CONCURRENCY = 8;
+    const BAR_WIDTH = 20;
+    const BAR_MAX = 200;
     const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const TYPE_COLORS = {
@@ -403,24 +392,21 @@
       "special-attack": "sp.atk", "special-defense": "sp.def", "speed": "speed"
     };
 
-    // ---------- State ----------
     let nextUrl = START_URL;
     let activeType = "";
-    let current = null;            
-    let animToken = 0;             
-    const pokemon = [];            
-    const cards = new Map();       
-    const detailCache = new Map(); 
-    const chips = new Map();       
+    let current = null;
+    let animToken = 0;
+    const pokemon = [];
+    const cards = new Map();
+    const detailCache = new Map();
+    const chips = new Map();
 
-    // ---------- Elements ----------
     const $ = (id) => document.getElementById(id);
     const grid = $("grid"), statusEl = $("status"), moreBtn = $("more");
     const searchEl = $("search"), countEl = $("count"), chipsEl = $("chips");
     const progressEl = $("progress");
     const dialog = $("detail"), dContent = $("dContent"), dPath = $("dPath");
 
-    // ---------- Helpers ----------
     const idFromUrl = (url) => Number(url.split("/").filter(Boolean).pop());
     const pad = (n) => "#" + String(n).padStart(4, "0");
 
@@ -467,7 +453,6 @@
       await Promise.all(runners);
     }
 
-    // ---------- Progress line ----------
     function setProgress(done, total) {
       const filled = Math.round((done / total) * 16);
       progressEl.replaceChildren(
@@ -483,7 +468,6 @@
       progressEl.replaceChildren(`${pokemon.length} entries ready. Select one to see its stats.`, cursor);
     }
 
-    // ---------- Type filter chips ----------
     function makeChip(type) {
       const button = el("button", "chip");
       button.type = "button";
@@ -503,7 +487,6 @@
       if (!chips.has(type)) {
         const chip = makeChip(type);
         chips.set(type, chip);
-        // keep chips alphabetical, after "all"
         const after = [...chips.keys()].filter((t) => t && t < type).sort().pop();
         const anchor = after ? chips.get(after).button : chips.get("").button;
         anchor.after(chip.button);
@@ -512,7 +495,6 @@
       chip.n.textContent = String(++chip.count);
     }
 
-    // ---------- Cards ----------
     function createCard(p, i) {
       const card = el("button", "card");
       card.type = "button";
@@ -564,7 +546,6 @@
       }
     }
 
-    // ---------- Loading ----------
     async function loadPage() {
       if (!nextUrl) return;
       moreBtn.disabled = true;
@@ -583,7 +564,6 @@
         moreBtn.disabled = false;
         moreBtn.textContent = "Load more";
 
-        // Fill in types in the background, showing progress in the header
         let done = 0;
         setProgress(0, batch.length);
         await runPool(batch, async (p) => {
@@ -609,8 +589,6 @@
       }
     }
 
-    // ---------- Detail dialog ----------
-    // Fills each ASCII bar and counts its number up, one stat after another.
     function animateStats(rows) {
       const token = ++animToken;
       const finalState = () => rows.forEach((r) => r.set(r.value));
@@ -670,12 +648,11 @@
 
       try {
         const d = await getDetails(p);
-        if (current !== p) return; // you already moved on to another Pokémon
+        if (current !== p) return;
 
         const types = d.types.map((t) => t.type.name);
         dialog.style.setProperty("--tc", typeColor(types[0]));
 
-        // Header
         const head = el("div", "d-head");
         const art = el("div", "d-art");
         const img = el("img");
@@ -693,14 +670,12 @@
 
         const flavor = el("p", "flavor");
 
-        // Key/value facts
         const kv = el("dl", "kv");
         const fact = (k, v) => kv.append(el("dt", "", k), el("dd", "", v));
         fact("height", `${(d.height / 10).toFixed(1)} m`);
         fact("weight", `${(d.weight / 10).toFixed(1)} kg`);
         fact("abilities", d.abilities.map((a) => a.ability.name).join(", "));
 
-        // Base stats as animated ASCII bars
         const stats = el("div");
         stats.append(el("h3", "stats-title", "base stats"));
         const rows = d.stats.map((s) => statRow(STAT_LABELS[s.stat.name] || s.stat.name, s.base_stat));
@@ -722,7 +697,6 @@
       }
     }
 
-    // Browse through the Pokémon currently shown in the grid
     function step(dir) {
       const list = pokemon.filter((p) => !cards.get(p.id).hidden);
       if (!list.length || !current) return;
@@ -743,7 +717,6 @@
       if (current) cards.get(current.id)?.focus({ preventScroll: true });
     });
 
-    // ---------- Wire up ----------
     const allChip = makeChip("");
     chips.set("", allChip);
     chipsEl.append(allChip.button);
