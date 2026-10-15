@@ -121,7 +121,7 @@
     .links a[aria-current="true"]::before { content: "*"; }
     .links a[aria-current="true"]:hover { color: var(--bg); }
 
-    .menu { position: relative; }
+    .menu { display: none; }
     .menu-btn {
       color: var(--bright);
       border: 1px solid var(--line);
@@ -132,38 +132,25 @@
     .menu-btn[aria-expanded="true"] { background: var(--bright); color: var(--bg); border-color: var(--bright); }
     .caret { display: inline-block; transition: transform .2s; }
     .menu-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
-    .label-narrow { display: none; }
 
     .panel {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 10px);
-      width: 340px;
+      position: fixed;
+      top: var(--bar-h);
+      left: 0; right: 0;
       background: var(--bg);
-      border: 1px solid var(--bright);
-      padding: 6px;
+      border-bottom: 1px solid var(--line);
+      padding: 8px var(--gutter) 16px;
     }
     .panel:not([hidden]) { animation: drop .16s ease-out; }
     @keyframes drop { from { opacity: 0; transform: translateY(-6px); } }
 
-    .group + .group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
-    .nav-group + .group { margin-top: 0; padding-top: 0; border-top: 0; }
-    .group-title { color: var(--dim); padding: 4px 10px; }
-    .nav-group { display: none; }
-    .group-title.side-title { display: none; }
-
     .panel a {
       display: block;
-      padding: 8px 10px;
+      padding: 10px;
       text-decoration: none;
-      color: var(--text);
+      color: var(--bright);
     }
-    .panel a:hover, .panel a:focus-visible { background: var(--raised); color: var(--text); outline: none; }
-    .nav-group a { color: var(--bright); }
-    .side-head { display: flex; justify-content: space-between; gap: 2ch; }
-    .side-name { color: var(--bright); font-weight: 500; }
-    .panel a:hover .side-name { text-decoration: underline; text-underline-offset: 4px; }
-    .side-desc { display: block; color: var(--dim); }
+    .panel a:hover, .panel a:focus-visible { background: var(--raised); color: var(--bright); outline: none; }
     .lang { color: var(--dim); }
 
     .hero {
@@ -290,38 +277,55 @@
       gap: 16px;
     }
     .project {
+      position: relative;
       display: flex;
       flex-direction: column;
       gap: 12px;
       padding: 28px;
       border: 1px solid var(--line);
-      color: var(--text);
-      text-decoration: none;
       transition: border-color .2s, background-color .2s;
     }
-    .project:hover, .project:focus-visible {
+    .project:hover, .project:focus-within {
       background: var(--raised);
-      color: var(--text);
       border-color: var(--bright);
-      outline: none;
     }
     .project-head { display: flex; justify-content: space-between; align-items: baseline; gap: 2ch; flex-wrap: wrap; }
     .project-name { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; color: var(--bright); overflow-wrap: anywhere; }
     .project-desc { max-width: 62ch; }
     .tags { display: flex; flex-wrap: wrap; gap: 0 2ch; color: var(--dim); }
+    .actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 12px; }
     .action {
-      margin-top: auto;
-      align-self: flex-start;
       padding: 4px 1ch;
       border: 1px solid var(--line);
       color: var(--bright);
+      text-decoration: none;
       transition: background-color .2s, color .2s, border-color .2s;
     }
-    .project:hover .action, .project:focus-visible .action {
+    /* the main link stretches over the whole card */
+    .action.main::after { content: ""; position: absolute; inset: 0; }
+    .project:hover .action.main,
+    .action:hover, .action:focus-visible {
       background: var(--bright);
       color: var(--bg);
       border-color: var(--bright);
     }
+
+    .side-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+      gap: 32px 16px;
+    }
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-left: 2ch;
+      border-left: 1px solid var(--line);
+    }
+    .side-name { font-size: 1.1rem; font-weight: 700; color: var(--bright); }
+    .side-desc { max-width: 62ch; }
+    .side .actions { padding-top: 4px; }
 
     .contact { display: grid; grid-template-columns: 10ch 1fr; gap: 6px 0; }
     .contact dt { color: var(--dim); }
@@ -339,21 +343,7 @@
 
     @media (max-width: 760px) {
       .links { display: none; }
-      .label-wide { display: none; }
-      .label-narrow { display: inline; }
-      .nav-group { display: block; }
-      .nav-group + .group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-      .group-title.side-title { display: block; }
-      .panel {
-        position: fixed;
-        top: var(--bar-h);
-        left: 0; right: 0;
-        width: auto;
-        border-width: 0 0 1px;
-        border-color: var(--line);
-        padding: 8px var(--gutter) 16px;
-      }
-      .nav-group a { padding: 10px; }
+      .menu { display: block; }
     }
 
     @media (max-height: 820px) and (min-width: 521px) {
@@ -399,23 +389,13 @@
 
       <div class="menu">
         <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="menuPanel">
-          <span class="label-wide">side projects</span><span class="label-narrow">menu</span>
-          <span class="caret" aria-hidden="true">▾</span>
+          menu <span class="caret" aria-hidden="true">▾</span>
         </button>
 
-        <div class="panel" id="menuPanel" hidden>
-          <div class="group nav-group">
-            <a href="#about">about</a>
-            <a href="#projects">projects</a>
-            <a href="#contact">contact</a>
-          </div>
-          <div class="group">
-            <p class="group-title side-title"># side projects</p>
-            <a class="side" href="/pokedex/">
-              <span class="side-head"><span class="side-name">pokedex/</span><span class="lang">javascript</span></span>
-              <span class="side-desc">A searchable Pokédex built on PokéAPI.</span>
-            </a>
-          </div>
+        <div class="panel nav-group" id="menuPanel" hidden>
+          <a href="#about">about</a>
+          <a href="#projects">projects</a>
+          <a href="#contact">contact</a>
         </div>
       </div>
     </div>
@@ -432,7 +412,7 @@
       <p><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd" id="typed">whoami</span><span class="cursor" id="heroCursor" aria-hidden="true"></span></p>
       <div class="reveal">
         <h1 class="name">Adrian Lara</h1>
-        <p class="about-line">Data Scientist</p>
+        <p class="about-line">Data Science student @ UNAM · ML&nbsp;&amp;&nbsp;security</p>
         <div class="hero-actions">
           <a class="hero-btn primary" href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
           <a class="hero-btn" href="#contact">contact</a>
@@ -460,16 +440,18 @@
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">ls skills/</span></h2>
       <dl class="out listing">
         <dt>languages/</dt>
-        <dd><span>python</span><span>bash</span></dd>
+        <dd><span>python</span><span>r</span><span>javascript</span><span>bash</span></dd>
+        <dt>tools/</dt>
+        <dd><span>pandas</span><span>numpy</span><span>scikit-learn</span><span>matplotlib</span><span>jupyter</span></dd>
         <dt>domains/</dt>
-        <dd><span>data-science</span><span>cybersecurity</span><span>artificial-intelligence</span><span>machine-learning</span></dd>
+        <dd><span>data-science</span><span>machine-learning</span><span>statistics</span><span>cybersecurity</span><span>artificial-intelligence</span></dd>
       </dl>
     </section>
 
     <section id="projects">
       <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">ls projects/</span></h2>
       <div class="out projects">
-        <a class="project" href="https://github.com/adlune/force-directed-NBAD" target="_blank" rel="noopener">
+        <article class="project">
           <div class="project-head">
             <h3 class="project-name">force-directed-NBAD/</h3>
             <span class="lang">python</span>
@@ -478,9 +460,48 @@
             A force-directed graph simulation based on Fruchterman-Reingold for detecting anomalies in network behavior.
           </p>
           <p class="tags"><span>anomaly-detection</span><span>graphs</span><span>network-security</span></p>
-          <span class="action">[ view repository ↗ ]</span>
-        </a>
+          <div class="actions">
+            <a class="action main" href="https://github.com/adlune/force-directed-NBAD" target="_blank" rel="noopener" aria-label="force-directed-NBAD repository (opens in new tab)">[ view repository ↗ ]</a>
+          </div>
+        </article>
       </div>
+    </section>
+
+    <section id="side-projects">
+      <h2><span class="ps1" aria-hidden="true">adlune:~$ </span><span class="cmd">ls side-projects/</span></h2>
+      <ul class="out side-list">
+        <li class="side">
+          <div class="project-head">
+            <h3 class="side-name">vgsales-analysis/</h3>
+            <span class="lang">python · r</span>
+          </div>
+          <p class="side-desc">
+            Predicts the sales tier and genre of 16,000+ video games with Decision Trees, Logistic Regression and
+            Naive Bayes. On a heavily imbalanced dataset, class weighting traded raw accuracy (56%&nbsp;→&nbsp;40%) for
+            balanced accuracy (0.33&nbsp;→&nbsp;0.41), lifting Blockbuster recall from 0&nbsp;to&nbsp;0.54.
+          </p>
+          <p class="tags"><span>classification</span><span>class-imbalance</span><span>statistics</span></p>
+          <div class="actions">
+            <a class="action" href="https://github.com/adlune/vgsales_analysis" target="_blank" rel="noopener" aria-label="vgsales-analysis repository (opens in new tab)">[ repository ↗ ]</a>
+            <a class="action" href="/assets/vgsales-report.pdf" target="_blank" rel="noopener" aria-label="vgsales-analysis report, PDF (opens in new tab)">[ report.pdf ↗ ]</a>
+          </div>
+        </li>
+        <li class="side">
+          <div class="project-head">
+            <h3 class="side-name">pokedex/</h3>
+            <span class="lang">javascript · python</span>
+          </div>
+          <p class="side-desc">
+            A searchable Pokédex with a JavaScript frontend backed by my own Flask REST API, serving PokéAPI data
+            from a SQLite database.
+          </p>
+          <p class="tags"><span>rest-api</span><span>flask</span><span>sqlite</span></p>
+          <div class="actions">
+            <a class="action" href="/pokedex/">[ open ↗ ]</a>
+            <a class="action" href="https://github.com/adlune/pokedex-api" target="_blank" rel="noopener" aria-label="pokedex-api repository (opens in new tab)">[ repository ↗ ]</a>
+          </div>
+        </li>
+      </ul>
     </section>
 
     <section id="contact">
