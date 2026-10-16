@@ -13,11 +13,11 @@
   <meta property="og:image" content="https://adrianlara.dev/assets/network.jpg">
   <meta name="twitter:card" content="summary_large_image">
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M7 24L16 7l9 14z' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3Ccircle cx='7' cy='24' r='3.4' fill='%23fff'/%3E%3Ccircle cx='16' cy='7' r='3.4' fill='%23fff'/%3E%3Ccircle cx='25' cy='21' r='3.4' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M7 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3Cpath d='M16 23h9' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -59,8 +59,7 @@
       height: 60px; display: flex; align-items: center; gap: 24px;
     }
     .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; text-decoration: none; font-weight: 500; letter-spacing: -0.01em; }
-    .glyph line { stroke: var(--fg); stroke-width: 1; }
-    .glyph circle { fill: var(--fg); }
+    .glyph path { stroke: var(--fg); stroke-width: 2; fill: none; stroke-linecap: square; }
     .nav { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
     .nav a {
       position: relative; display: block; padding: 8px 10px; font-size: 14px;
@@ -122,10 +121,11 @@
     .kicker { margin: 0; font-size: 14px; color: var(--text); animation: rise .6s ease-out .1s both; }
     .kicker .dim { color: var(--dim); }
     .name {
-      margin: 20px 0 22px -0.05em; font-size: clamp(3.1rem, 8.4vw, 7.6rem); font-weight: 300; line-height: .95;
-      letter-spacing: -0.065em; color: var(--fg); white-space: nowrap;
-      padding-right: 0.08em;
-      animation: type 1.05s steps(11, end) .35s backwards;
+      margin: 18px 0 22px -0.04em; padding-right: 0.08em;
+      font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-optical-sizing: auto; font-size: clamp(3.4rem, 9.6vw, 8.8rem); font-weight: 400; line-height: 1;
+      letter-spacing: -0.025em; color: var(--fg); white-space: nowrap;
+      animation: type 1s cubic-bezier(.6, 0, .2, 1) .35s backwards;
     }
     .tagline { margin: 0; font-size: clamp(1rem, 1.4vw, 1.2rem); color: var(--text); animation: rise .7s ease-out 1.3s both; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; animation: rise .7s ease-out 1.45s both; }
@@ -262,7 +262,7 @@
       body { font-size: 15px; }
       .hero { height: clamp(560px, calc(100svh - 61px), 760px); }
       .hero-inner { padding-bottom: 56px; }
-      .name { font-size: min(13.2vw, 3.6rem); }
+      .name { font-size: min(15vw, 4.2rem); }
       .hud { display: none; }
       .branch { grid-template-columns: minmax(0, 1fr); gap: 12px; }
       .branch::before { top: 32px; }
@@ -283,12 +283,8 @@
     <div class="top-inner">
       <a class="brand" href="#top" aria-label="Adrian Lara, back to top">
         <svg class="glyph" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-          <line x1="4" y1="15" x2="10" y2="4"></line>
-          <line x1="10" y1="4" x2="16" y2="13"></line>
-          <line x1="4" y1="15" x2="16" y2="13"></line>
-          <circle cx="4" cy="15" r="2.2"></circle>
-          <circle cx="10" cy="4" r="2.2"></circle>
-          <circle cx="16" cy="13" r="2.2"></circle>
+          <path d="M4 5l5 5-5 5"></path>
+          <path d="M11 15h6"></path>
         </svg>
         <span>adrian lara</span>
       </a>
