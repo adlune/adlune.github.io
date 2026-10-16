@@ -73,9 +73,30 @@
     }
     .nav a.is-active::after { transform: translateX(-50%) scale(1); }
     .top .menu-btn { display: none; }
-    .panel { display: grid; padding: 8px var(--gutter) 18px; border-top: 1px solid var(--line); background: var(--bg); }
+    .panel {
+      position: absolute; top: 100%; left: 0; right: 0;
+      padding: 28px var(--gutter) 32px; background: var(--bg); border-bottom: 1px solid var(--line);
+      animation: drop .25s ease-out;
+    }
     .panel[hidden] { display: none; }
-    .panel a { display: flex; align-items: center; min-height: 44px; text-decoration: none; border-bottom: 1px solid var(--line); }
+    .menu-graph { position: relative; list-style: none; margin: 0; padding: 0; }
+    .menu-graph::before { content: ""; position: absolute; left: 7px; top: 26px; bottom: 26px; width: 1px; background: var(--line); }
+    .menu-graph li { animation: rise .35s ease-out backwards; }
+    .menu-graph li:nth-child(2) { animation-delay: .04s; }
+    .menu-graph li:nth-child(3) { animation-delay: .08s; }
+    .menu-graph li:nth-child(4) { animation-delay: .12s; }
+    .menu-graph li:nth-child(5) { animation-delay: .16s; }
+    .menu-graph a {
+      display: flex; align-items: center; gap: 20px; min-height: 52px;
+      font-size: 1.6rem; font-weight: 300; letter-spacing: -0.04em; color: var(--fg); text-decoration: none;
+    }
+    .m-node {
+      position: relative; z-index: 1; flex: none; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--faint); transition: background-color .25s, border-color .25s;
+    }
+    .menu-graph a.is-active .m-node, .menu-graph a:hover .m-node { background: var(--fg); border-color: var(--fg); }
+    .menu-graph a.is-active .m-node { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fg) 12%, transparent); }
+    .menu-resume { margin: 24px 0 0 35px; animation: rise .35s ease-out .2s backwards; }
 
     .btn {
       display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
@@ -103,10 +124,14 @@
     .name {
       margin: 20px 0 22px -0.05em; font-size: clamp(3.1rem, 8.4vw, 7.6rem); font-weight: 300; line-height: .95;
       letter-spacing: -0.065em; color: var(--fg); white-space: nowrap;
-      animation: type 1.05s steps(11, end) .35s both;
+      padding-right: 0.08em;
+      animation: type 1.05s steps(11, end) .35s backwards;
     }
     .tagline { margin: 0; font-size: clamp(1rem, 1.4vw, 1.2rem); color: var(--text); animation: rise .7s ease-out 1.3s both; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; animation: rise .7s ease-out 1.45s both; }
+    .hero-actions .btn { background: var(--bg); }
+    .hero-actions .btn:hover, .hero-actions .btn-solid { background: var(--fg); }
+    .hero-actions .btn-solid:hover { background: var(--bg); }
     .hubs { position: absolute; inset: 0; z-index: 2; pointer-events: none; animation: fade 1s ease-out 1.6s both; }
     .hub { position: absolute; left: 0; top: 0; transform: translate(-999px, -999px); pointer-events: auto; text-decoration: none; }
     .hub span {
@@ -114,13 +139,15 @@
       color: var(--text); background: var(--bg); border: 1px solid var(--line); transition: color .2s, border-color .2s;
     }
     .hub:hover span { color: var(--fg); border-color: var(--fg); }
+    .hero.compact .hubs { display: none; }
     .hud {
       position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; max-width: 1200px; margin: 0 auto;
       padding: 0 var(--gutter) 22px; text-align: right; font-size: 12px; color: var(--dim);
       white-space: pre; font-variant-numeric: tabular-nums; pointer-events: none; animation: fade 1s ease-out 1.8s both;
     }
 
-    @keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 -2% 0 0); } }
+    @keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes drop { from { opacity: 0; transform: translateY(-8px); } }
     @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
     @keyframes fade { from { opacity: 0; } }
 
@@ -233,9 +260,10 @@
     @media (max-width: 640px) {
       :root { --spine-gap: 40px; }
       body { font-size: 15px; }
-      .hero { height: 700px; }
-      .hero-inner { justify-content: flex-start; padding-top: 64px; }
-      .hud, .hubs { display: none; }
+      .hero { height: clamp(560px, calc(100svh - 61px), 760px); }
+      .hero-inner { padding-bottom: 56px; }
+      .name { font-size: min(13.2vw, 3.6rem); }
+      .hud { display: none; }
       .branch { grid-template-columns: minmax(0, 1fr); gap: 12px; }
       .branch::before { top: 32px; }
       .card { padding: 24px; }
@@ -275,12 +303,14 @@
       <button class="btn btn-sm menu-btn" id="menuBtn" type="button" aria-controls="menu" aria-expanded="false">menu</button>
     </div>
     <div class="panel" id="menu" hidden>
-      <a href="#about">about</a>
-      <a href="#skills">skills</a>
-      <a href="#projects">projects</a>
-      <a href="#side-projects">side projects</a>
-      <a href="#contact">contact</a>
-      <a href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
+      <ul class="menu-graph">
+        <li><a href="#about" data-nav="about"><span class="m-node" aria-hidden="true"></span><span>about<span class="slash">/</span></span></a></li>
+        <li><a href="#skills" data-nav="skills"><span class="m-node" aria-hidden="true"></span><span>skills<span class="slash">/</span></span></a></li>
+        <li><a href="#projects" data-nav="projects"><span class="m-node" aria-hidden="true"></span><span>projects<span class="slash">/</span></span></a></li>
+        <li><a href="#side-projects" data-nav="side-projects"><span class="m-node" aria-hidden="true"></span><span>side-projects<span class="slash">/</span></span></a></li>
+        <li><a href="#contact" data-nav="contact"><span class="m-node" aria-hidden="true"></span><span>contact<span class="slash">/</span></span></a></li>
+      </ul>
+      <a class="btn btn-solid menu-resume" href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
     </div>
   </nav>
 
@@ -430,6 +460,7 @@
   <script>
     (function () {
       const NODE_COUNT = 64;
+      const NODE_COUNT_COMPACT = 44;
       const HUB_COUNT = 5;
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -440,6 +471,7 @@
       const setMenu = (open) => {
         menu.hidden = !open;
         menuBtn.setAttribute("aria-expanded", String(open));
+        menuBtn.textContent = open ? "close" : "menu";
       };
       menuBtn.addEventListener("click", () => setMenu(menu.hidden));
       menu.addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
@@ -475,9 +507,9 @@
         spineFill.style.transform = "scaleY(" + progress.toFixed(4) + ")";
         let active = "";
         sections.forEach((s) => {
-          const reached = s.getBoundingClientRect().top < vh * 0.6;
-          s.classList.toggle("is-reached", reached);
-          if (reached) active = s.id;
+          const top = s.getBoundingClientRect().top;
+          s.classList.toggle("is-reached", top < vh * 0.6);
+          if (top < vh * 0.35) active = s.id;
         });
         navLinks.forEach((a) => a.classList.toggle("is-active", a.dataset.nav === active));
       }
@@ -502,7 +534,7 @@
       let mouse = null, hoverNode = -1, hoverHub = -1;
       let flag = { i: -1, t0: 0 }, nextFlag = performance.now() + 2600;
       let fg = "255,255,255", bg = "#000000";
-      let raf = 0, heroVisible = true, hudAt = 0, hubsFixed = false;
+      let raf = 0, heroVisible = true, hudAt = 0, hubsFixed = false, compact = false;
 
       function readColors() {
         const cs = getComputedStyle(document.documentElement);
@@ -529,9 +561,16 @@
         dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = Math.round(W * dpr);
         canvas.height = Math.round(H * dpr);
-        region = W >= 900
-          ? { x0: W * 0.52, x1: W * 0.97, y0: H * 0.1, y1: H * 0.86 }
-          : { x0: W * 0.05, x1: W * 0.95, y0: H * 0.56, y1: H * 0.9 };
+        const wasCompact = compact;
+        compact = W < 900;
+        hero.classList.toggle("compact", compact);
+        region = compact
+          ? { x0: W * 0.04, x1: W * 0.96, y0: H * 0.06, y1: H * 0.94 }
+          : { x0: W * 0.52, x1: W * 0.97, y0: H * 0.1, y1: H * 0.86 };
+        if (nodes.length && compact !== wasCompact) {
+          build();
+          return;
+        }
         if (old && nodes.length) {
           const rw0 = old.x1 - old.x0, rh0 = old.y1 - old.y0;
           const rw = region.x1 - region.x0, rh = region.y1 - region.y0;
@@ -565,7 +604,8 @@
         nodes = [];
         edges = [];
         for (let c = 0; c < HUB_COUNT; c++) nodes.push({ c, hub: true });
-        const per = Math.max(4, Math.round((NODE_COUNT - HUB_COUNT) / HUB_COUNT));
+        const count = compact ? NODE_COUNT_COMPACT : NODE_COUNT;
+        const per = Math.max(4, Math.round((count - HUB_COUNT) / HUB_COUNT));
         for (let c = 0; c < HUB_COUNT; c++) {
           const ids = [];
           for (let i = 0; i < per; i++) { nodes.push({ c, hub: false }); ids.push(nodes.length - 1); }
@@ -597,6 +637,10 @@
         dy = new Float32Array(nodes.length);
         temp = (region.x1 - region.x0) * 0.12;
         hubsFixed = false;
+        flag = { i: -1, t0: 0 };
+        hoverNode = -1;
+        hoverHub = -1;
+        pos = [];
       }
 
       function step() {
@@ -622,14 +666,14 @@
         }
         for (let i = 0; i < N; i++) {
           const p = nodes[i];
-          if (i === hoverHub || (p.hub && hubsFixed)) continue;
+          if (!compact && (i === hoverHub || (p.hub && hubsFixed))) continue;
           dx[i] += (cx - p.x) * gx;
           dy[i] += (cy - p.y) * gy;
           const len = Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]) || 1;
           const move = Math.min(len, temp);
           p.x += dx[i] / len * move;
           p.y += dy[i] / len * move;
-          if (mouse && !p.hub) {
+          if (mouse && (compact || !p.hub)) {
             const ex = p.x - mouse.x, ey = p.y - mouse.y, d = Math.sqrt(ex * ex + ey * ey) || 1;
             if (d < 130) {
               const push = 1 - d / 130, s = push * push * 9;
@@ -670,7 +714,7 @@
         pos.length = nodes.length;
         for (let i = 0; i < nodes.length; i++) {
           const p = nodes[i];
-          const w = p.hub ? 0 : wobble;
+          const w = p.hub && !compact ? 0 : wobble;
           pos[i] = [p.x + Math.sin(tt * p.sp + p.ph) * w, p.y + Math.cos(tt * p.sp * 0.8 + p.ph) * w];
         }
         const lit = highlights(now);
@@ -679,7 +723,7 @@
         ctx.lineWidth = 1;
         for (const bright of [false, true]) {
           if (bright && !lit.any) break;
-          ctx.strokeStyle = "rgba(" + fg + "," + (bright ? 0.7 : 0.14) + ")";
+          ctx.strokeStyle = "rgba(" + fg + "," + (bright ? (compact ? 0.3 : 0.7) : compact ? 0.11 : 0.14) + ")";
           ctx.beginPath();
           for (let e = 0; e < edges.length; e++) {
             const a = edges[e][0], b = edges[e][1];
@@ -689,14 +733,14 @@
           }
           ctx.stroke();
         }
-        for (let i = HUB_COUNT; i < nodes.length; i++) {
+        for (let i = compact ? 0 : HUB_COUNT; i < nodes.length; i++) {
           const on = lit.node(i);
-          ctx.fillStyle = "rgba(" + fg + "," + (on ? 1 : 0.7) + ")";
+          ctx.fillStyle = "rgba(" + fg + "," + (on ? (compact ? 0.75 : 1) : compact ? 0.5 : 0.7) + ")";
           ctx.beginPath();
-          ctx.arc(pos[i][0], pos[i][1], 1.6 + Math.min(nodes[i].deg, 8) * 0.22 + (on ? 0.9 : 0), 0, TAU);
+          ctx.arc(pos[i][0], pos[i][1], 1.6 + Math.min(nodes[i].deg, 8) * 0.22 + (on && !compact ? 0.9 : 0), 0, TAU);
           ctx.fill();
         }
-        for (let i = 0; i < HUB_COUNT; i++) {
+        for (let i = 0; i < (compact ? 0 : HUB_COUNT); i++) {
           ctx.fillStyle = bg;
           ctx.strokeStyle = "rgba(" + fg + "," + (lit.node(i) ? 1 : 0.85) + ")";
           ctx.lineWidth = 1.2;
@@ -712,12 +756,12 @@
         if (lit.flagOn) {
           const age = (now - flag.t0) / 1800;
           ctx.lineWidth = 1;
-          ctx.strokeStyle = "rgba(" + fg + "," + ((1 - age) * 0.9).toFixed(3) + ")";
+          ctx.strokeStyle = "rgba(" + fg + "," + ((1 - age) * (compact ? 0.4 : 0.9)).toFixed(3) + ")";
           ctx.beginPath();
           ctx.arc(pos[flag.i][0], pos[flag.i][1], 5 + age * 30, 0, TAU);
           ctx.stroke();
         }
-        labels.forEach((el, i) => {
+        if (!compact) labels.forEach((el, i) => {
           el.style.transform = "translate(" + pos[i][0].toFixed(1) + "px," + pos[i][1].toFixed(1) + "px)";
         });
       }
@@ -769,6 +813,7 @@
         const r = hero.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
         mouse = reduceMotion ? null : { x, y };
+        if (compact) { wake(); return; }
         let best = -1, bd = 16 * 16;
         for (let i = 0; i < HUB_COUNT; i++) {
           const ex = pos[i][0] - x, ey = pos[i][1] - y, d = ex * ex + ey * ey;
@@ -785,8 +830,18 @@
         hero.style.cursor = best >= 0 && best < HUB_COUNT ? "pointer" : "";
         wake();
       });
+      const onTouch = (e) => {
+        if (reduceMotion || !e.touches.length) return;
+        const r = hero.getBoundingClientRect();
+        mouse = { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+        wake();
+      };
+      hero.addEventListener("touchstart", onTouch, { passive: true });
+      hero.addEventListener("touchmove", onTouch, { passive: true });
+      hero.addEventListener("touchend", () => { mouse = null; }, { passive: true });
+      hero.addEventListener("touchcancel", () => { mouse = null; }, { passive: true });
       hero.addEventListener("click", (e) => {
-        if (hoverNode >= 0 && hoverNode < HUB_COUNT && e.target === canvas) labels[hoverNode].click();
+        if (!compact && hoverNode >= 0 && hoverNode < HUB_COUNT && e.target === canvas) labels[hoverNode].click();
       });
       hero.addEventListener("mouseleave", () => { mouse = null; hoverNode = -1; hero.style.cursor = ""; wake(); });
       labels.forEach((el, i) => {
