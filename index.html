@@ -502,7 +502,7 @@
       let mouse = null, hoverNode = -1, hoverHub = -1;
       let flag = { i: -1, t0: 0 }, nextFlag = performance.now() + 2600;
       let fg = "255,255,255", bg = "#000000";
-      let raf = 0, heroVisible = true, hudAt = 0;
+      let raf = 0, heroVisible = true, hudAt = 0, hubsFixed = false;
 
       function readColors() {
         const cs = getComputedStyle(document.documentElement);
@@ -540,6 +540,7 @@
             p.y = region.y0 + (p.y - old.y0) / rh0 * rh;
           });
           temp = Math.max(temp, 4);
+          hubsFixed = false;
         }
         constants();
       }
@@ -595,6 +596,7 @@
         dx = new Float32Array(nodes.length);
         dy = new Float32Array(nodes.length);
         temp = (region.x1 - region.x0) * 0.12;
+        hubsFixed = false;
       }
 
       function step() {
@@ -619,15 +621,15 @@
           dx[ib] += ex * f; dy[ib] += ey * f;
         }
         for (let i = 0; i < N; i++) {
-          if (i === hoverHub) continue;
           const p = nodes[i];
+          if (i === hoverHub || (p.hub && hubsFixed)) continue;
           dx[i] += (cx - p.x) * gx;
           dy[i] += (cy - p.y) * gy;
           const len = Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]) || 1;
           const move = Math.min(len, temp);
           p.x += dx[i] / len * move;
           p.y += dy[i] / len * move;
-          if (mouse) {
+          if (mouse && !p.hub) {
             const ex = p.x - mouse.x, ey = p.y - mouse.y, d = Math.sqrt(ex * ex + ey * ey) || 1;
             if (d < 130) {
               const push = 1 - d / 130, s = push * push * 9;
@@ -639,6 +641,7 @@
           p.y = Math.max(10, Math.min(H - 10, p.y));
         }
         temp = Math.max(0.25, temp * 0.97);
+        if (temp < 0.6) hubsFixed = true;
         if (mouse) temp = Math.max(temp, 1.5);
       }
 
@@ -667,7 +670,7 @@
         pos.length = nodes.length;
         for (let i = 0; i < nodes.length; i++) {
           const p = nodes[i];
-          const w = i === hoverHub ? 0 : wobble;
+          const w = p.hub ? 0 : wobble;
           pos[i] = [p.x + Math.sin(tt * p.sp + p.ph) * w, p.y + Math.cos(tt * p.sp * 0.8 + p.ph) * w];
         }
         const lit = highlights(now);
@@ -766,23 +769,28 @@
         const r = hero.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
         mouse = reduceMotion ? null : { x, y };
-        let best = -1, bd = 18 * 18;
-        for (let i = 0; i < pos.length; i++) {
+        let best = -1, bd = 16 * 16;
+        for (let i = 0; i < HUB_COUNT; i++) {
           const ex = pos[i][0] - x, ey = pos[i][1] - y, d = ex * ex + ey * ey;
           if (d < bd) { bd = d; best = i; }
         }
+        if (best < 0) {
+          bd = 18 * 18;
+          for (let i = HUB_COUNT; i < pos.length; i++) {
+            const ex = pos[i][0] - x, ey = pos[i][1] - y, d = ex * ex + ey * ey;
+            if (d < bd) { bd = d; best = i; }
+          }
+        }
         hoverNode = best;
+        hero.style.cursor = best >= 0 && best < HUB_COUNT ? "pointer" : "";
         wake();
       });
-      hero.addEventListener("mouseleave", () => { mouse = null; hoverNode = -1; wake(); });
+      hero.addEventListener("click", (e) => {
+        if (hoverNode >= 0 && hoverNode < HUB_COUNT && e.target === canvas) labels[hoverNode].click();
+      });
+      hero.addEventListener("mouseleave", () => { mouse = null; hoverNode = -1; hero.style.cursor = ""; wake(); });
       labels.forEach((el, i) => {
-        el.addEventListener("mouseenter", () => {
-          const tt = performance.now() / 1000, p = nodes[i];
-          p.x += Math.sin(tt * p.sp + p.ph) * 1.6 * (reduceMotion ? 0 : 1);
-          p.y += Math.cos(tt * p.sp * 0.8 + p.ph) * 1.6 * (reduceMotion ? 0 : 1);
-          hoverHub = i;
-          wake();
-        });
+        el.addEventListener("mouseenter", () => { hoverHub = i; wake(); });
         el.addEventListener("mouseleave", () => { hoverHub = -1; wake(); });
       });
 
