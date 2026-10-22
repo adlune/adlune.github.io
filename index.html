@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adrian Lara</title>
+  <meta name="description" content="Data Science student at UNAM, ENES Morelia, working on data science and cybersecurity projects.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://adrianlara.dev/">
+  <meta property="og:title" content="Adrian Lara">
+  <meta property="og:description" content="Data Science student at UNAM, ENES Morelia, working on data science and cybersecurity projects.">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M7 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3Cpath d='M16 23h9' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #000000; --fg: #ffffff; --fg-rgb: 255,255,255;
+      --text: #cfcfcf; --dim: #8f8f8f; --faint: #575757; --line: #242424; --raised: #0b0b0b;
+      --gutter: clamp(20px, 4vw, 48px);
+      --spine-gap: 72px;
+      --fig-filter: invert(1) hue-rotate(180deg);
+      --dot: #2e2e2e;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff; --fg: #000000; --fg-rgb: 0,0,0;
+        --text: #2b2b2b; --dim: #666666; --faint: #a6a6a6; --line: #e3e3e3; --raised: #f6f6f6;
+        --fig-filter: none;
+        --dot: #d2d2d2;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* a still lattice behind the page: fades in below the hero, drifts slightly slower than the
+       content, and one column of dots runs through the spine */
+    body::before {
+      content: ""; position: fixed; left: 0; right: 0; top: -28px; bottom: -28px; z-index: -1; pointer-events: none;
+      background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.6px);
+      background-size: 28px 28px;
+      background-position: var(--dots-x, 0px) 0;
+      opacity: var(--dots-on, 0);
+      transform: translate3d(0, var(--dots-y, 0px), 0);
+    }
+    ::selection { background: var(--fg); color: var(--bg); }
+    a { color: var(--fg); }
+    :focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
+
+    .top {
+      position: sticky; top: 0; z-index: 30;
+      background: color-mix(in srgb, var(--bg) 78%, transparent);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-inner {
+      max-width: 1200px; margin: 0 auto; padding: 0 var(--gutter);
+      height: 60px; display: flex; align-items: center; gap: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; text-decoration: none; font-weight: 500; letter-spacing: -0.01em; }
+    .glyph path { stroke: var(--fg); stroke-width: 2; fill: none; stroke-linecap: square; }
+    .nav { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
+    .nav a {
+      position: relative; display: block; padding: 8px 10px; font-size: 14px;
+      color: var(--dim); text-decoration: none; transition: color .2s;
+    }
+    .nav a:hover, .nav a.is-active { color: var(--fg); }
+    .nav a::after {
+      content: ""; position: absolute; left: 50%; bottom: 1px; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--fg); transform: translateX(-50%) scale(0); transition: transform .25s;
+    }
+    .nav a.is-active::after { transform: translateX(-50%) scale(1); }
+    .top .menu-btn { display: none; }
+    .panel {
+      position: absolute; top: 100%; left: 0; right: 0;
+      padding: 28px var(--gutter) 32px; background: var(--bg); border-bottom: 1px solid var(--line);
+      animation: drop .25s ease-out;
+    }
+    .panel[hidden] { display: none; }
+    .menu-graph { position: relative; list-style: none; margin: 0; padding: 0; }
+    .menu-graph::before { content: ""; position: absolute; left: 7px; top: 26px; bottom: 26px; width: 1px; background: var(--line); }
+    .menu-graph li { animation: rise .35s ease-out backwards; }
+    .menu-graph li:nth-child(2) { animation-delay: .04s; }
+    .menu-graph li:nth-child(3) { animation-delay: .08s; }
+    .menu-graph li:nth-child(4) { animation-delay: .12s; }
+    .menu-graph li:nth-child(5) { animation-delay: .16s; }
+    .menu-graph a {
+      display: flex; align-items: center; gap: 20px; min-height: 52px;
+      font-size: 1.6rem; font-weight: 300; letter-spacing: -0.04em; color: var(--fg); text-decoration: none;
+    }
+    .m-node {
+      position: relative; z-index: 1; flex: none; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--faint); transition: background-color .25s, border-color .25s;
+    }
+    .menu-graph a.is-active .m-node, .menu-graph a:hover .m-node { background: var(--fg); border-color: var(--fg); }
+    .menu-graph a.is-active .m-node { box-shadow: 0 0 0 5px color-mix(in srgb, var(--fg) 12%, transparent); }
+    .menu-resume { margin: 24px 0 0 35px; animation: rise .35s ease-out .2s backwards; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
+      font: inherit; font-size: 14px; font-weight: 500; color: var(--fg); background: transparent;
+      border: 1px solid var(--faint); border-radius: 0; text-decoration: none; cursor: pointer;
+      transition: background-color .2s, color .2s, border-color .2s;
+    }
+    .btn:hover { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .btn-solid { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .btn-solid:hover { background: transparent; color: var(--fg); }
+    .btn-sm { min-height: 36px; padding: 0 14px; }
+
+    .hero {
+      position: relative; height: clamp(620px, 52vw, 860px); overflow: hidden;
+      background: var(--bg); border-bottom: 1px solid var(--line);
+    }
+    .graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .hero-inner {
+      position: relative; z-index: 3; height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 var(--gutter) 40px;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start; pointer-events: none;
+    }
+    .hero-inner > * { pointer-events: auto; }
+    .kicker { margin: 0; font-size: 14px; color: var(--text); animation: rise .6s ease-out .1s both; }
+    .kicker .dim { color: var(--dim); }
+    .name {
+      margin: 18px 0 22px -0.04em; padding-right: 0.08em;
+      font-family: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+      font-optical-sizing: auto; font-size: clamp(3.4rem, 9.6vw, 8.8rem); font-weight: 400; line-height: 1;
+      letter-spacing: -0.025em; color: var(--fg); white-space: nowrap;
+      animation: type 1s cubic-bezier(.6, 0, .2, 1) .35s backwards;
+    }
+    .tagline { margin: 0; font-size: clamp(1rem, 1.4vw, 1.2rem); color: var(--text); animation: rise .7s ease-out 1.3s both; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; animation: rise .7s ease-out 1.45s both; }
+    .hero-actions .btn { background: var(--bg); }
+    .hero-actions .btn:hover, .hero-actions .btn-solid { background: var(--fg); }
+    .hero-actions .btn-solid:hover { background: var(--bg); }
+    .hubs { position: absolute; inset: 0; z-index: 2; pointer-events: none; animation: fade 1s ease-out 1.6s both; }
+    .hub { position: absolute; left: 0; top: 0; transform: translate(-999px, -999px); pointer-events: auto; text-decoration: none; }
+    .hub span {
+      display: block; transform: translate(12px, -50%); padding: 2px 8px; font-size: 12px; white-space: nowrap;
+      color: var(--text); background: var(--bg); border: 1px solid var(--line); transition: color .2s, border-color .2s;
+    }
+    .hub:hover span { color: var(--fg); border-color: var(--fg); }
+    .hero.compact .hubs { display: none; }
+    .hud {
+      position: absolute; z-index: 3; right: 0; bottom: 0; left: 0; max-width: 1200px; margin: 0 auto;
+      padding: 0 var(--gutter) 22px; text-align: right; font-size: 12px; color: var(--dim);
+      white-space: pre; font-variant-numeric: tabular-nums; pointer-events: none; animation: fade 1s ease-out 1.8s both;
+    }
+
+    @keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes drop { from { opacity: 0; transform: translateY(-8px); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+    @keyframes fade { from { opacity: 0; } }
+
+    main { position: relative; max-width: 1200px; margin: 0 auto; padding: 96px var(--gutter) 48px; }
+    .spine { position: absolute; left: calc(var(--gutter) + 7px); top: 0; bottom: 96px; width: 1px; background: var(--line); }
+    .spine-fill { position: absolute; inset: 0; background: var(--fg); transform-origin: top; transform: scaleY(0); }
+
+    .sec { position: relative; padding-left: var(--spine-gap); margin-bottom: 96px; scroll-margin-top: 92px; }
+    .sec-node {
+      position: absolute; left: 0; top: 13px; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--faint);
+      transition: background-color .45s, border-color .45s, box-shadow .45s;
+    }
+    .sec.is-reached .sec-node {
+      background: var(--fg); border-color: var(--fg);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--fg) 12%, transparent);
+    }
+    .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 28px; margin-bottom: 40px; }
+    .sec-title {
+      margin: 0; font-size: clamp(1.7rem, 3.2vw, 2.6rem); font-weight: 400; line-height: 1.2;
+      letter-spacing: -0.04em; color: var(--fg);
+    }
+    .sec-meta { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
+    .slash { color: var(--faint); }
+
+    .lede {
+      margin: 0; max-width: 46ch; font-size: clamp(1.25rem, 2.1vw, 1.8rem); font-weight: 300; line-height: 1.45;
+      letter-spacing: -0.02em; color: var(--fg);
+    }
+
+    .tree { display: grid; }
+    .branch {
+      position: relative; display: grid; grid-template-columns: 13ch minmax(0, 1fr); gap: 24px; align-items: center;
+      padding: 20px 0; border-top: 1px solid var(--line);
+    }
+    .branch:last-child { border-bottom: 1px solid var(--line); }
+    .branch::before, .joint::before {
+      content: ""; position: absolute; left: calc(-1 * var(--spine-gap) + 8px); width: calc(var(--spine-gap) - 12px);
+      height: 1px; background: var(--line); transition: background-color .25s;
+    }
+    .branch::before { top: 50%; }
+    .branch:hover::before, .joint:hover::before { background: var(--fg); }
+    .b-label { color: var(--dim); font-size: 14px; }
+    .leaves { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .leaves li {
+      display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 11px; font-size: 14px;
+      color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
+      transition: color .2s, border-color .2s;
+    }
+    .leaves li::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--dim);
+      transition: background-color .2s, border-color .2s;
+    }
+    .leaves li:hover { color: var(--fg); border-color: var(--fg); }
+    .leaves li:hover::before { background: var(--fg); border-color: var(--fg); }
+
+    .joint { position: relative; }
+    .joint::before { top: 47px; }
+    .joint::after {
+      content: ""; position: absolute; left: -5px; top: 43px; width: 9px; height: 9px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--faint); transition: background-color .25s, border-color .25s; z-index: 1;
+    }
+    .joint:hover::after { background: var(--fg); border-color: var(--fg); }
+
+    .card {
+      position: relative; padding: 32px; border: 1px solid var(--line); background: var(--bg);
+      display: flex; flex-direction: column; gap: 14px; transition: border-color .25s, background-color .25s;
+    }
+    .card:hover, .card:focus-within { border-color: var(--faint); background: var(--raised); }
+    .feature { padding: 40px; }
+    .feature:hover, .feature:focus-within { border-color: var(--fg); }
+    .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    .card h3 { margin: 0; font-size: 1.5rem; font-weight: 500; letter-spacing: -0.03em; color: var(--fg); overflow-wrap: anywhere; }
+    .feature h3 { font-size: clamp(1.6rem, 2.6vw, 2.1rem); }
+    .lang { font-size: 13px; color: var(--dim); }
+    .desc { margin: 0; max-width: 62ch; color: var(--text); }
+    .tags { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--dim); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 10px; }
+    .stretch::after { content: ""; position: absolute; inset: 0; }
+    .feature:hover .stretch { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+    .stack { display: grid; gap: 16px; }
+
+    .fig { margin: 6px 0 4px; display: grid; gap: 10px; }
+    .fig img { display: block; width: 100%; max-width: 100%; height: auto; border: 1px solid var(--line); filter: var(--fig-filter); }
+    .fig figcaption { font-size: 13px; color: var(--dim); }
+
+    .email-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-bottom: 48px; }
+    .email {
+      font-size: clamp(1.7rem, 4.6vw, 3.6rem); font-weight: 300; letter-spacing: -0.05em; line-height: 1.1;
+      text-decoration: none; overflow-wrap: anywhere;
+      background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size .45s;
+    }
+    .email:hover { background-size: 100% 1px; }
+    .links { display: grid; grid-template-columns: 11ch minmax(0, 1fr); margin: 0; max-width: 640px; }
+    .links dt, .links dd { margin: 0; padding: 14px 0; border-top: 1px solid var(--line); }
+    .links dt { color: var(--dim); }
+    .links dd a { text-decoration: none; }
+    .links dd a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+    footer {
+      position: relative; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      padding: 28px 0 0 var(--spine-gap); border-top: 1px solid var(--line); font-size: 13px; color: var(--dim);
+    }
+    footer p { margin: 0; }
+    footer::before {
+      content: ""; position: absolute; left: 3px; top: -5px; width: 9px; height: 9px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--faint);
+    }
+
+    @media (max-width: 860px) {
+      .nav, .top-inner > .resume-link { display: none; }
+      .top .menu-btn { display: inline-flex; }
+      .feature { padding: 28px; }
+    }
+    @media (max-width: 640px) {
+      :root { --spine-gap: 40px; }
+      body { font-size: 15px; }
+      .hero { height: clamp(560px, calc(100svh - 61px), 760px); }
+      .hero-inner { padding-bottom: 56px; }
+      .name { font-size: min(15vw, 4.2rem); }
+      .hud { display: none; }
+      .branch { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+      .branch::before { top: 32px; }
+      .card { padding: 24px; }
+      .links { grid-template-columns: minmax(0, 1fr); }
+      .links dd { border-top: 0; padding-top: 0; }
+      .sec { margin-bottom: 80px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body id="top">
+
+  <nav class="top" aria-label="Main">
+    <div class="top-inner">
+      <a class="brand" href="#top" aria-label="Adrian Lara, back to top">
+        <svg class="glyph" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4 5l5 5-5 5"></path>
+          <path d="M11 15h6"></path>
+        </svg>
+        <span>adrian lara</span>
+      </a>
+      <ul class="nav">
+        <li><a href="#about" data-nav="about">about</a></li>
+        <li><a href="#skills" data-nav="skills">skills</a></li>
+        <li><a href="#projects" data-nav="projects">projects</a></li>
+        <li><a href="#side-projects" data-nav="side-projects">side projects</a></li>
+        <li><a href="#contact" data-nav="contact">contact</a></li>
+      </ul>
+      <a class="btn btn-sm resume-link" href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
+      <button class="btn btn-sm menu-btn" id="menuBtn" type="button" aria-controls="menu" aria-expanded="false">menu</button>
+    </div>
+    <div class="panel" id="menu" hidden>
+      <ul class="menu-graph">
+        <li><a href="#about" data-nav="about"><span class="m-node" aria-hidden="true"></span><span>about<span class="slash">/</span></span></a></li>
+        <li><a href="#skills" data-nav="skills"><span class="m-node" aria-hidden="true"></span><span>skills<span class="slash">/</span></span></a></li>
+        <li><a href="#projects" data-nav="projects"><span class="m-node" aria-hidden="true"></span><span>projects<span class="slash">/</span></span></a></li>
+        <li><a href="#side-projects" data-nav="side-projects"><span class="m-node" aria-hidden="true"></span><span>side-projects<span class="slash">/</span></span></a></li>
+        <li><a href="#contact" data-nav="contact"><span class="m-node" aria-hidden="true"></span><span>contact<span class="slash">/</span></span></a></li>
+      </ul>
+      <a class="btn btn-solid menu-resume" href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="hero">
+    <canvas class="graph" id="graph" aria-hidden="true"></canvas>
+
+    <div class="hubs" aria-hidden="true">
+      <a class="hub" href="#about" tabindex="-1" data-hub="0"><span>about/</span></a>
+      <a class="hub" href="#skills" tabindex="-1" data-hub="1"><span>skills/</span></a>
+      <a class="hub" href="#projects" tabindex="-1" data-hub="2"><span>projects/</span></a>
+      <a class="hub" href="#side-projects" tabindex="-1" data-hub="3"><span>side-projects/</span></a>
+      <a class="hub" href="#contact" tabindex="-1" data-hub="4"><span>contact/</span></a>
+    </div>
+
+    <div class="hero-inner">
+      <p class="kicker"><span class="dim">adlune:~$</span> whoami</p>
+      <h1 class="name">Adrian Lara</h1>
+      <p class="tagline">Data Science student @ UNAM · ML&nbsp;&amp;&nbsp;security</p>
+      <div class="hero-actions">
+        <a class="btn btn-solid" href="/assets/resume.pdf" target="_blank" rel="noopener">resume ↗</a>
+        <a class="btn" href="#contact">contact</a>
+      </div>
+    </div>
+
+    <p class="hud" id="hud" aria-hidden="true"></p>
+  </header>
+
+  <main id="main">
+    <div class="spine" aria-hidden="true"><div class="spine-fill" id="spineFill"></div></div>
+
+    <section id="about" class="sec" data-sec>
+      <span class="sec-node" aria-hidden="true"></span>
+      <div class="sec-head">
+        <h2 class="sec-title">about<span class="slash">/</span></h2>
+        <span class="sec-meta">unam · enes morelia</span>
+      </div>
+      <p class="lede">I'm Adrian Lara, a Data Science student at the National Autonomous University of Mexico (UNAM). I like building projects that solve real problems, and I'm currently learning more about cybersecurity and networking.</p>
+    </section>
+
+    <section id="skills" class="sec" data-sec>
+      <span class="sec-node" aria-hidden="true"></span>
+      <div class="sec-head">
+        <h2 class="sec-title">skills<span class="slash">/</span></h2>
+        <span class="sec-meta">3 groups · 14 entries</span>
+      </div>
+      <div class="tree">
+        <div class="branch">
+          <span class="b-label">languages/</span>
+          <ul class="leaves">
+            <li>python</li>
+            <li>r</li>
+            <li>javascript</li>
+            <li>bash</li>
+          </ul>
+        </div>
+        <div class="branch">
+          <span class="b-label">tools/</span>
+          <ul class="leaves">
+            <li>pandas</li>
+            <li>numpy</li>
+            <li>scikit-learn</li>
+            <li>matplotlib</li>
+            <li>jupyter</li>
+          </ul>
+        </div>
+        <div class="branch">
+          <span class="b-label">domains/</span>
+          <ul class="leaves">
+            <li>data-science</li>
+            <li>machine-learning</li>
+            <li>statistics</li>
+            <li>cybersecurity</li>
+            <li>artificial-intelligence</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="projects" class="sec" data-sec>
+      <span class="sec-node" aria-hidden="true"></span>
+      <div class="sec-head">
+        <h2 class="sec-title">projects<span class="slash">/</span></h2>
+        <span class="sec-meta">1 item · python</span>
+      </div>
+      <div class="joint">
+        <article class="card feature">
+          <div class="card-head">
+            <h3>force-directed-NBAD<span class="slash">/</span></h3>
+            <span class="lang">python</span>
+          </div>
+          <p class="desc">A force-directed graph simulation based on Fruchterman-Reingold for detecting anomalies in network behavior.</p>
+          <figure class="fig">
+            <img src="/assets/nbad-test-run.gif" width="1080" height="540" loading="lazy" decoding="async" alt="Animation of the force-directed layout of one minute of benign network traffic settling into a few large hubs, with energy and residual force curves falling until convergence">
+            <figcaption>test run for one minute of benign network traffic</figcaption>
+          </figure>
+          <p class="tags"><span>anomaly-detection</span><span>graphs</span><span>network-security</span></p>
+          <div class="actions">
+            <a class="btn stretch" href="https://github.com/adlune/force-directed-NBAD" target="_blank" rel="noopener" aria-label="force-directed-NBAD repository (opens in new tab)">view repository ↗</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="side-projects" class="sec" data-sec>
+      <span class="sec-node" aria-hidden="true"></span>
+      <div class="sec-head">
+        <h2 class="sec-title">side-projects<span class="slash">/</span></h2>
+        <span class="sec-meta">2 items · r, python, javascript</span>
+      </div>
+      <div class="joint">
+        <div class="stack">
+          <article class="card">
+            <div class="card-head">
+              <h3>vgsales-analysis<span class="slash">/</span></h3>
+              <span class="lang">r · python</span>
+            </div>
+            <p class="desc">What drives video game sales? A statistical study of 16,598 games using non-parametric tests on heavily skewed data. Publisher size is the strongest factor (median 0.27M&nbsp;vs&nbsp;0.07M units for major vs small publishers), and RPGs sell a median 42% of their units in Japan, against 0% for other genres. Classification models complement the analysis and confirm these factors describe groups, not individual games (R²&nbsp;=&nbsp;0.11, 0.41 balanced accuracy).</p>
+            <figure class="fig">
+              <img src="/assets/vgsales-distributions.png" width="1800" height="750" loading="lazy" decoding="async" alt="Two histograms: global sales per game are heavily right-skewed, with most games under one million units, and the log1p transform spreads them into a smoother curve">
+              <figcaption>distribution before and after log1p transform</figcaption>
+            </figure>
+            <p class="tags"><span>statistics</span><span>hypothesis-testing</span><span>regression</span><span>machine-learning</span></p>
+            <div class="actions">
+              <a class="btn" href="https://github.com/adlune/vgsales_analysis" target="_blank" rel="noopener" aria-label="vgsales-analysis repository (opens in new tab)">repository ↗</a>
+              <a class="btn" href="/assets/vgsales-report.pdf" target="_blank" rel="noopener" aria-label="vgsales-analysis report, PDF (opens in new tab)">report.pdf ↗</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>pokedex<span class="slash">/</span></h3>
+              <span class="lang">javascript · python</span>
+            </div>
+            <p class="desc">A searchable Pokédex with a JavaScript frontend backed by my own Flask REST API, serving PokéAPI data from a SQLite database.</p>
+            <p class="tags"><span>rest-api</span><span>flask</span><span>sqlite</span></p>
+            <div class="actions">
+              <a class="btn" href="/pokedex/">open</a>
+              <a class="btn" href="https://github.com/adlune/pokedex-api" target="_blank" rel="noopener" aria-label="pokedex-api repository (opens in new tab)">repository ↗</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="sec" data-sec>
+      <span class="sec-node" aria-hidden="true"></span>
+      <div class="sec-head">
+        <h2 class="sec-title">contact<span class="slash">/</span></h2>
+        <span class="sec-meta">utc−6 · morelia, mx</span>
+      </div>
+      <div class="email-row">
+        <a class="email" href="mailto:contact@adrianlara.dev">contact@adrianlara.dev</a>
+        <button class="btn btn-sm" id="copyBtn" type="button"><span aria-live="polite" id="copyLabel">copy</span></button>
+      </div>
+      <dl class="links">
+        <dt>github</dt>
+        <dd><a href="https://github.com/adlune" target="_blank" rel="noopener">github.com/adlune ↗</a></dd>
+        <dt>linkedin</dt>
+        <dd><a href="https://www.linkedin.com/in/adrian-lara-cs/" target="_blank" rel="noopener">linkedin.com/in/adrian-lara-cs ↗</a></dd>
+        <dt>resume</dt>
+        <dd><a href="/assets/resume.pdf" target="_blank" rel="noopener">resume.pdf ↗</a></dd>
+      </dl>
+    </section>
+
+    <footer>
+      <p>© <span id="year"></span> Adrian Lara</p>
+      <p>adrianlara.dev</p>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const NODE_COUNT = 64;
+      const NODE_COUNT_COMPACT = 44;
+      const HUB_COUNT = 5;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      const menuBtn = document.getElementById("menuBtn");
+      const menu = document.getElementById("menu");
+      const setMenu = (open) => {
+        menu.hidden = !open;
+        menuBtn.setAttribute("aria-expanded", String(open));
+        menuBtn.textContent = open ? "close" : "menu";
+      };
+      menuBtn.addEventListener("click", () => setMenu(menu.hidden));
+      menu.addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !menu.hidden) { setMenu(false); menuBtn.focus(); }
+      });
+      document.addEventListener("click", (e) => {
+        if (!menu.hidden && !menu.contains(e.target) && e.target !== menuBtn) setMenu(false);
+      });
+
+      const copyBtn = document.getElementById("copyBtn");
+      const copyLabel = document.getElementById("copyLabel");
+      let copyTimer;
+      copyBtn.addEventListener("click", () => {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+        navigator.clipboard.writeText("contact@adrianlara.dev").then(() => {
+          copyLabel.textContent = "copied";
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(() => { copyLabel.textContent = "copy"; }, 1800);
+        }, () => {});
+      });
+
+      const main = document.getElementById("main");
+      const spineFill = document.getElementById("spineFill");
+      const sections = [...document.querySelectorAll("[data-sec]")];
+      const navLinks = [...document.querySelectorAll("[data-nav]")];
+      const root = document.documentElement;
+      const spine = document.querySelector(".spine");
+      const heroBox = document.getElementById("hero");
+      const DOT = 28;
+      let scrollQueued = false;
+      function updateScroll() {
+        scrollQueued = false;
+        const vh = window.innerHeight || 1;
+        const r = main.getBoundingClientRect();
+        const progress = Math.max(0, Math.min(1, (vh * 0.6 - r.top) / Math.max(1, r.height)));
+        spineFill.style.transform = "scaleY(" + progress.toFixed(4) + ")";
+
+        const heroH = heroBox.offsetHeight || 1;
+        const dotsOn = Math.max(0, Math.min(1, (window.scrollY - heroH * 0.35) / (heroH * 0.5)));
+        root.style.setProperty("--dots-on", dotsOn.toFixed(3));
+        root.style.setProperty("--dots-x", (spine.getBoundingClientRect().left + 0.5 - DOT / 2).toFixed(1) + "px");
+        if (!reduceMotion) root.style.setProperty("--dots-y", (-(window.scrollY * 0.12) % DOT).toFixed(2) + "px");
+        let active = "";
+        sections.forEach((s) => {
+          const top = s.getBoundingClientRect().top;
+          s.classList.toggle("is-reached", top < vh * 0.6);
+          if (top < vh * 0.35) active = s.id;
+        });
+        navLinks.forEach((a) => a.classList.toggle("is-active", a.dataset.nav === active));
+      }
+      const queueScroll = () => {
+        if (scrollQueued) return;
+        scrollQueued = true;
+        requestAnimationFrame(updateScroll);
+      };
+      window.addEventListener("scroll", queueScroll, { passive: true });
+      window.addEventListener("resize", queueScroll);
+      updateScroll();
+
+      const hero = document.getElementById("hero");
+      const canvas = document.getElementById("graph");
+      const hud = document.getElementById("hud");
+      const ctx = canvas.getContext("2d");
+      const labels = [...document.querySelectorAll("[data-hub]")];
+      const scheme = window.matchMedia("(prefers-color-scheme: light)");
+
+      let W = 1, H = 1, dpr = 1, region = null, k = 1, gx = 0, gy = 0, cx = 0, cy = 0, temp = 0;
+      let nodes = [], edges = [], adj = [], pos = [], dx, dy;
+      let mouse = null, hoverNode = -1, hoverHub = -1;
+      let flag = { i: -1, t0: 0 }, nextFlag = performance.now() + 2600;
+      let fg = "255,255,255", bg = "#000000";
+      let raf = 0, heroVisible = true, hudAt = 0, hubsFixed = false, compact = false;
+
+      function readColors() {
+        const cs = getComputedStyle(document.documentElement);
+        fg = cs.getPropertyValue("--fg-rgb").trim() || fg;
+        bg = cs.getPropertyValue("--bg").trim() || bg;
+      }
+
+      function constants() {
+        const N = Math.max(1, nodes.length);
+        const rw = region.x1 - region.x0, rh = region.y1 - region.y0;
+        k = 0.78 * Math.sqrt(rw * rh / N);
+        const G = 0.75 * N * k * k;
+        gx = G / ((rw / 2) * (rw / 2));
+        gy = G / ((rh / 2) * (rh / 2));
+        cx = (region.x0 + region.x1) / 2;
+        cy = (region.y0 + region.y1) / 2;
+      }
+
+      function resize() {
+        const r = hero.getBoundingClientRect();
+        const old = region;
+        W = Math.max(1, r.width);
+        H = Math.max(1, r.height);
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        const wasCompact = compact;
+        compact = W < 900;
+        hero.classList.toggle("compact", compact);
+        region = compact
+          ? { x0: W * 0.04, x1: W * 0.96, y0: H * 0.06, y1: H * 0.94 }
+          : { x0: W * 0.52, x1: W * 0.97, y0: H * 0.1, y1: H * 0.86 };
+        if (nodes.length && compact !== wasCompact) {
+          build();
+          return;
+        }
+        if (old && nodes.length) {
+          const rw0 = old.x1 - old.x0, rh0 = old.y1 - old.y0;
+          const rw = region.x1 - region.x0, rh = region.y1 - region.y0;
+          nodes.forEach((p) => {
+            p.x = region.x0 + (p.x - old.x0) / rw0 * rw;
+            p.y = region.y0 + (p.y - old.y0) / rh0 * rh;
+          });
+          temp = Math.max(temp, 4);
+          hubsFixed = false;
+        }
+        constants();
+      }
+
+      function build() {
+        let seed = 11;
+        const rnd = () => {
+          seed |= 0;
+          seed = seed + 0x6D2B79F5 | 0;
+          let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+        const seen = {};
+        const add = (a, b) => {
+          if (a === b) return;
+          const key = a < b ? a + "-" + b : b + "-" + a;
+          if (seen[key]) return;
+          seen[key] = true;
+          edges.push([a, b]);
+        };
+        nodes = [];
+        edges = [];
+        for (let c = 0; c < HUB_COUNT; c++) nodes.push({ c, hub: true });
+        const count = compact ? NODE_COUNT_COMPACT : NODE_COUNT;
+        const per = Math.max(4, Math.round((count - HUB_COUNT) / HUB_COUNT));
+        for (let c = 0; c < HUB_COUNT; c++) {
+          const ids = [];
+          for (let i = 0; i < per; i++) { nodes.push({ c, hub: false }); ids.push(nodes.length - 1); }
+          ids.forEach((id) => {
+            if (rnd() < 0.4) add(c, id);
+            const m = 1 + Math.floor(rnd() * 2);
+            for (let j = 0; j < m; j++) add(id, ids[Math.floor(rnd() * ids.length)]);
+          });
+          add(c, ids[0]);
+          add(c, ids[1]);
+        }
+        for (let b = 0; b < HUB_COUNT * 2; b++) {
+          const a = HUB_COUNT + Math.floor(rnd() * (nodes.length - HUB_COUNT));
+          const o = HUB_COUNT + Math.floor(rnd() * (nodes.length - HUB_COUNT));
+          if (nodes[a].c !== nodes[o].c) add(a, o);
+        }
+        for (let c = 0; c < HUB_COUNT; c++) add(c, (c + 1) % HUB_COUNT);
+        adj = nodes.map(() => []);
+        edges.forEach((e) => { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); });
+        constants();
+        nodes.forEach((p, i) => {
+          p.x = cx + (rnd() - 0.5) * 24;
+          p.y = cy + (rnd() - 0.5) * 24;
+          p.deg = adj[i].length;
+          p.ph = rnd() * Math.PI * 2;
+          p.sp = 0.35 + rnd() * 0.55;
+        });
+        dx = new Float32Array(nodes.length);
+        dy = new Float32Array(nodes.length);
+        temp = (region.x1 - region.x0) * 0.12;
+        hubsFixed = false;
+        flag = { i: -1, t0: 0 };
+        hoverNode = -1;
+        hoverHub = -1;
+        pos = [];
+      }
+
+      function step() {
+        const N = nodes.length, k2 = k * k;
+        dx.fill(0);
+        dy.fill(0);
+        for (let i = 0; i < N; i++) {
+          const a = nodes[i];
+          for (let j = i + 1; j < N; j++) {
+            const b = nodes[j];
+            let ex = a.x - b.x, ey = a.y - b.y, d2 = ex * ex + ey * ey;
+            if (d2 < 0.01) { ex = 0.1; ey = 0.1; d2 = 0.02; }
+            const f = k2 / d2;
+            dx[i] += ex * f; dy[i] += ey * f;
+            dx[j] -= ex * f; dy[j] -= ey * f;
+          }
+        }
+        for (let e = 0; e < edges.length; e++) {
+          const ia = edges[e][0], ib = edges[e][1], A = nodes[ia], B = nodes[ib];
+          const ex = A.x - B.x, ey = A.y - B.y, f = Math.sqrt(ex * ex + ey * ey) / k;
+          dx[ia] -= ex * f; dy[ia] -= ey * f;
+          dx[ib] += ex * f; dy[ib] += ey * f;
+        }
+        for (let i = 0; i < N; i++) {
+          const p = nodes[i];
+          if (!compact && (i === hoverHub || (p.hub && hubsFixed))) continue;
+          dx[i] += (cx - p.x) * gx;
+          dy[i] += (cy - p.y) * gy;
+          const len = Math.sqrt(dx[i] * dx[i] + dy[i] * dy[i]) || 1;
+          const move = Math.min(len, temp);
+          p.x += dx[i] / len * move;
+          p.y += dy[i] / len * move;
+          if (mouse && (compact || !p.hub)) {
+            const ex = p.x - mouse.x, ey = p.y - mouse.y, d = Math.sqrt(ex * ex + ey * ey) || 1;
+            if (d < 130) {
+              const push = 1 - d / 130, s = push * push * 9;
+              p.x += ex / d * s;
+              p.y += ey / d * s;
+            }
+          }
+          p.x = Math.max(10, Math.min(W - 10, p.x));
+          p.y = Math.max(10, Math.min(H - 10, p.y));
+        }
+        temp = Math.max(0.25, temp * 0.97);
+        if (temp < 0.6) hubsFixed = true;
+        if (mouse) temp = Math.max(temp, 1.5);
+      }
+
+      function highlights(now) {
+        const set = new Set();
+        const flagOn = flag.i >= 0 && now - flag.t0 < 1800;
+        if (hoverNode >= 0) { set.add(hoverNode); adj[hoverNode].forEach((j) => set.add(j)); }
+        if (hoverHub >= 0) nodes.forEach((p, i) => { if (p.c === hoverHub) set.add(i); });
+        if (flagOn) { set.add(flag.i); adj[flag.i].forEach((j) => set.add(j)); }
+        const any = set.size > 0;
+        return {
+          any,
+          flagOn,
+          node: (i) => set.has(i),
+          edge: (a, b) => {
+            if (!any) return false;
+            if (hoverNode >= 0 && (a === hoverNode || b === hoverNode)) return true;
+            if (flagOn && (a === flag.i || b === flag.i)) return true;
+            return hoverHub >= 0 && nodes[a].c === hoverHub && nodes[b].c === hoverHub;
+          }
+        };
+      }
+
+      function draw(now) {
+        const TAU = Math.PI * 2, wobble = reduceMotion ? 0 : 1.6, tt = now / 1000;
+        pos.length = nodes.length;
+        for (let i = 0; i < nodes.length; i++) {
+          const p = nodes[i];
+          const w = p.hub && !compact ? 0 : wobble;
+          pos[i] = [p.x + Math.sin(tt * p.sp + p.ph) * w, p.y + Math.cos(tt * p.sp * 0.8 + p.ph) * w];
+        }
+        const lit = highlights(now);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        ctx.lineWidth = 1;
+        for (const bright of [false, true]) {
+          if (bright && !lit.any) break;
+          ctx.strokeStyle = "rgba(" + fg + "," + (bright ? (compact ? 0.3 : 0.7) : compact ? 0.11 : 0.14) + ")";
+          ctx.beginPath();
+          for (let e = 0; e < edges.length; e++) {
+            const a = edges[e][0], b = edges[e][1];
+            if (lit.edge(a, b) !== bright) continue;
+            ctx.moveTo(pos[a][0], pos[a][1]);
+            ctx.lineTo(pos[b][0], pos[b][1]);
+          }
+          ctx.stroke();
+        }
+        for (let i = compact ? 0 : HUB_COUNT; i < nodes.length; i++) {
+          const on = lit.node(i);
+          ctx.fillStyle = "rgba(" + fg + "," + (on ? (compact ? 0.75 : 1) : compact ? 0.5 : 0.7) + ")";
+          ctx.beginPath();
+          ctx.arc(pos[i][0], pos[i][1], 1.6 + Math.min(nodes[i].deg, 8) * 0.22 + (on && !compact ? 0.9 : 0), 0, TAU);
+          ctx.fill();
+        }
+        for (let i = 0; i < (compact ? 0 : HUB_COUNT); i++) {
+          ctx.fillStyle = bg;
+          ctx.strokeStyle = "rgba(" + fg + "," + (lit.node(i) ? 1 : 0.85) + ")";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(pos[i][0], pos[i][1], 5.5, 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "rgba(" + fg + ",1)";
+          ctx.beginPath();
+          ctx.arc(pos[i][0], pos[i][1], 1.8, 0, TAU);
+          ctx.fill();
+        }
+        if (lit.flagOn) {
+          const age = (now - flag.t0) / 1800;
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "rgba(" + fg + "," + ((1 - age) * (compact ? 0.4 : 0.9)).toFixed(3) + ")";
+          ctx.beginPath();
+          ctx.arc(pos[flag.i][0], pos[flag.i][1], 5 + age * 30, 0, TAU);
+          ctx.stroke();
+        }
+        if (!compact) labels.forEach((el, i) => {
+          el.style.transform = "translate(" + pos[i][0].toFixed(1) + "px," + pos[i][1].toFixed(1) + "px)";
+        });
+      }
+
+      function writeHud(now, force) {
+        if (!force && now - hudAt < 250) return;
+        hudAt = now;
+        let s = "nodes " + nodes.length + "   edges " + edges.length + "   temp " + temp.toFixed(2);
+        if (flag.i >= 0 && now - flag.t0 < 4000) s += "   flagged n" + flag.i;
+        hud.textContent = s;
+      }
+
+      function frame(now) {
+        raf = 0;
+        if (now >= nextFlag) {
+          flag = { i: HUB_COUNT + Math.floor(Math.random() * (nodes.length - HUB_COUNT)), t0: now };
+          nextFlag = now + 4200 + Math.random() * 2400;
+        }
+        step();
+        draw(now);
+        writeHud(now, false);
+        if (heroVisible && !document.hidden) raf = requestAnimationFrame(frame);
+      }
+
+      function wake() {
+        if (reduceMotion) {
+          const now = performance.now();
+          draw(now);
+          writeHud(now, true);
+        } else if (!raf && heroVisible && !document.hidden) {
+          raf = requestAnimationFrame(frame);
+        }
+      }
+
+      readColors();
+      resize();
+      build();
+      if (reduceMotion) for (let s = 0; s < 320; s++) step();
+
+      new ResizeObserver(() => { resize(); wake(); }).observe(hero);
+      new IntersectionObserver((entries) => {
+        heroVisible = entries[0].isIntersecting;
+        if (heroVisible) wake();
+      }).observe(hero);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
+      scheme.addEventListener("change", () => { readColors(); wake(); });
+
+      hero.addEventListener("mousemove", (e) => {
+        const r = hero.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        mouse = reduceMotion ? null : { x, y };
+        if (compact) { wake(); return; }
+        let best = -1, bd = 16 * 16;
+        for (let i = 0; i < HUB_COUNT; i++) {
+          const ex = pos[i][0] - x, ey = pos[i][1] - y, d = ex * ex + ey * ey;
+          if (d < bd) { bd = d; best = i; }
+        }
+        if (best < 0) {
+          bd = 18 * 18;
+          for (let i = HUB_COUNT; i < pos.length; i++) {
+            const ex = pos[i][0] - x, ey = pos[i][1] - y, d = ex * ex + ey * ey;
+            if (d < bd) { bd = d; best = i; }
+          }
+        }
+        hoverNode = best;
+        hero.style.cursor = best >= 0 && best < HUB_COUNT ? "pointer" : "";
+        wake();
+      });
+      const onTouch = (e) => {
+        if (reduceMotion || !e.touches.length) return;
+        const r = hero.getBoundingClientRect();
+        mouse = { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+        wake();
+      };
+      hero.addEventListener("touchstart", onTouch, { passive: true });
+      hero.addEventListener("touchmove", onTouch, { passive: true });
+      hero.addEventListener("touchend", () => { mouse = null; }, { passive: true });
+      hero.addEventListener("touchcancel", () => { mouse = null; }, { passive: true });
+      hero.addEventListener("click", (e) => {
+        if (!compact && hoverNode >= 0 && hoverNode < HUB_COUNT && e.target === canvas) labels[hoverNode].click();
+      });
+      hero.addEventListener("mouseleave", () => { mouse = null; hoverNode = -1; hero.style.cursor = ""; wake(); });
+      labels.forEach((el, i) => {
+        el.addEventListener("mouseenter", () => { hoverHub = i; wake(); });
+        el.addEventListener("mouseleave", () => { hoverHub = -1; wake(); });
+      });
+
+      wake();
+    })();
+  </script>
+</body>
+</html>

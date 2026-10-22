@@ -1,0 +1,40 @@
+name: cleanup-deployments
+
+on:
+  workflow_run:
+    workflows: ["pages-build-deployment"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  deployments: write
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old Pages deployments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # newest first; keep the first one, it is the live site
+          gh api --paginate "repos/$REPO/deployments?environment=github-pages&per_page=100" --jq '.[].id' \
+            | tail -n +2 \
+            | while read -r id; do
+                gh api -X POST "repos/$REPO/deployments/$id/statuses" -f state=inactive > /dev/null
+                gh api -X DELETE "repos/$REPO/deployments/$id"
+                echo "deleted deployment $id"
+              done
+
+      - name: Delete old workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api --paginate "repos/$REPO/actions/runs?status=completed&per_page=100" --jq '.workflow_runs[].id' \
+            | while read -r id; do
+                gh api -X DELETE "repos/$REPO/actions/runs/$id"
+                echo "deleted run $id"
+              done
