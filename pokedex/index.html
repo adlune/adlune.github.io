@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokédex · Adrian Lara</title>
+  <meta name="description" content="A Pokédex with its own Flask API: browse, add, edit and delete the first 100 Pokémon.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #000000;
+      --raised: #121212;
+      --line: #2d2d2d;
+      --dim: #8a8a8a;
+      --text: #d9d9d9;
+      --bright: #ffffff;
+      --err: #ff6b6b;
+      --scrim: rgba(0, 0, 0, .78);
+      --material: color-mix(in srgb, var(--bg) 74%, transparent);
+      --material-heavy: color-mix(in srgb, var(--bg) 88%, transparent);
+
+      /* motion: a critically damped spring (no overshoot), settle time set by the duration;
+         the cubic-bezier is the fallback for browsers without linear() */
+      --spring: cubic-bezier(.22, .9, .3, 1);
+      --spring-move: .55s;
+      --spring-snap: .42s;
+      --press: 80ms;
+    }
+    @supports (transition-timing-function: linear(0, 1)) {
+      :root {
+        --spring: linear(0, 0.094, 0.274, 0.455, 0.608, 0.726, 0.812, 0.874, 0.916, 0.945, 0.964, 0.976, 0.985, 0.990, 0.994, 0.996, 0.997, 0.998, 1);
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --raised: #f4f4f4;
+        --line: #d4d4d4;
+        --dim: #666666;
+        --text: #262626;
+        --bright: #000000;
+        --err: #c62828;
+        --scrim: rgba(0, 0, 0, .45);
+      }
+    }
+    @media (prefers-contrast: more) {
+      :root { --text: #ececec; --dim: #b8b8b8; --line: #5c5c5c; }
+    }
+    @media (prefers-contrast: more) and (prefers-color-scheme: light) {
+      :root { --text: #111111; --dim: #3d3d3d; --line: #9a9a9a; }
+    }
+
+    *, ::before, ::after { --ink: var(--tc, var(--bright)); }
+    @media (prefers-color-scheme: light) {
+      *, ::before, ::after { --ink: color-mix(in srgb, var(--tc, var(--bright)) 72%, #000); }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: "Fira Code", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: .9375rem;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+      /* ease OS light/dark switches instead of flashing */
+      transition: background-color .4s ease, color .4s ease;
+    }
+
+    ::selection { background: var(--bright); color: var(--bg); }
+
+    /* our own press states replace the grey tap flash; manipulation drops the double-tap zoom wait */
+    a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+    a {
+      color: var(--bright);
+      text-decoration: underline;
+      text-decoration-color: var(--line);
+      text-underline-offset: 4px;
+      transition: opacity .2s;
+    }
+    a:active { opacity: .55; transition-duration: 0s; }
+    :focus-visible { outline: 1px solid var(--bright); outline-offset: 2px; }
+
+    /* the page recedes a little behind a modal sheet, so the sheet reads as the layer in front */
+    .wrap {
+      max-width: 1120px; margin: 0 auto; padding: 48px 20px 64px;
+      transform-origin: 50% 30vh;
+      transition: transform var(--spring-move) var(--spring);
+    }
+    body:has(dialog[open]) .wrap { transform: scale(.985); }
+
+    .path { color: var(--dim); }
+    .path a { color: var(--bright); }
+    .path .cmd { color: var(--bright); }
+    h1 {
+      font-size: clamp(2.2rem, 7vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: var(--bright);
+      margin: 14px 0 6px;
+    }
+    .progress { color: var(--dim); margin-bottom: 28px; min-height: 1.6em; }
+    .progress .ok { color: var(--bright); }
+    .cursor {
+      display: inline-block; width: .6em; height: 1.1em; vertical-align: text-bottom;
+      background: var(--bright); margin-left: 4px;
+      animation: blink 1.1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* search and filters stay at hand as a translucent bar the grid scrolls under; the bottom
+       edge only fades in once cards are actually passing beneath it */
+    .controls {
+      position: sticky; top: 0; z-index: 4;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--line);
+      margin-bottom: 24px;
+      display: grid;
+      gap: 14px;
+    }
+    .controls::before {
+      content: ""; position: absolute; inset: 0 -20px; z-index: -1;
+      background: var(--material);
+      -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+      border-bottom: 1px solid var(--line);
+      transition: border-color .3s ease;
+    }
+    .controls::after {
+      content: ""; position: absolute; left: -20px; right: -20px; top: 100%; height: 18px; pointer-events: none;
+      background: linear-gradient(var(--material), transparent);
+      opacity: 0; transition: opacity .3s ease;
+    }
+    .controls.is-stuck { border-top-color: transparent; }
+    .controls.is-stuck::before { border-bottom-color: transparent; }
+    .controls.is-stuck::after { opacity: 1; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
+    .field { display: flex; align-items: center; gap: 1ch; flex: 1 1 280px; }
+    .field label { color: var(--dim); }
+    .field input {
+      font: inherit;
+      width: 100%;
+      color: var(--bright);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding: 4px 0;
+      transition: border-color .2s;
+    }
+    .field input:focus { outline: none; border-bottom-color: var(--bright); }
+    .field input::placeholder { color: var(--dim); opacity: .7; }
+    .count { color: var(--dim); font-variant-numeric: tabular-nums; }
+    .tools { display: flex; gap: 8px; margin-left: auto; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font: inherit;
+      font-size: .8125rem;
+      letter-spacing: .01em;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 3px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: none;
+      transition: border-color .2s, background-color .2s, color .2s, transform var(--spring-snap) var(--spring);
+      animation: boot var(--spring-move) var(--spring) backwards;
+    }
+    .chip::before { content: ""; width: 8px; height: 8px; background: var(--tc, var(--bright)); }
+    .chip .n { color: var(--dim); font-variant-numeric: tabular-nums; }
+    .chip:active { transform: scale(.95); transition-duration: .2s, .2s, .2s, var(--press); }
+    .chip[aria-pressed="true"] {
+      color: var(--bright);
+      border-color: var(--tc, var(--bright));
+      background: color-mix(in srgb, var(--tc, var(--bright)) 18%, transparent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid var(--line);
+      border-top: 2px solid color-mix(in srgb, var(--tc, var(--line)) 70%, transparent);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color .25s, background-color .25s, transform var(--spring-snap) var(--spring);
+      animation: boot var(--spring-move) var(--spring) backwards;
+      animation-delay: calc(min(var(--i, 0), 24) * 12ms);
+    }
+    .settled .card, .settled .chip { animation: none; }
+    .card[hidden] { display: none; }
+    .card:focus-visible {
+      border-color: var(--tc, var(--bright));
+      background: color-mix(in srgb, var(--tc, var(--bright)) 6%, transparent);
+      transform: translateY(-3px);
+    }
+    .card:active { transform: scale(.97); transition-duration: .25s, .25s, var(--press); }
+
+    @keyframes boot {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .art { position: relative; margin-bottom: 10px; aspect-ratio: 1; }
+    .art::before {
+      content: "";
+      position: absolute; inset: 8%;
+      background: radial-gradient(closest-side, color-mix(in srgb, var(--tc, transparent) 45%, transparent), transparent);
+      opacity: 0;
+      transition: opacity .35s;
+    }
+    .art img {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: grayscale(1) contrast(1.05);
+      opacity: .85;
+      transition: filter .35s, opacity .35s, transform var(--spring-move) var(--spring);
+    }
+    .card:focus-visible .art::before, .card:active .art::before { opacity: 1; }
+    .card:focus-visible .art img, .card:active .art img { filter: none; opacity: 1; transform: scale(1.06); }
+
+    /* hover states only where a pointer can hover, so taps on touch screens don't leave them stuck on */
+    @media (hover: hover) {
+      a:hover { background: var(--bright); color: var(--bg); text-decoration: none; }
+      .chip:hover { border-color: var(--tc, var(--bright)); }
+      .card:hover {
+        border-color: var(--tc, var(--bright));
+        background: color-mix(in srgb, var(--tc, var(--bright)) 6%, transparent);
+        transform: translateY(-3px);
+      }
+      .card:hover:active { transform: translateY(-3px) scale(.97); }
+      .card:hover .art::before { opacity: 1; }
+      .card:hover .art img { filter: none; opacity: 1; transform: scale(1.06); }
+    }
+
+    .noart {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      border: 1px dashed var(--line);
+      color: var(--dim);
+      font-size: 2.5rem;
+    }
+
+    .num { color: var(--dim); font-size: .8125rem; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+    .name { color: var(--bright); font-weight: 500; overflow-wrap: anywhere; }
+
+    .types { display: flex; flex-wrap: wrap; gap: 2px 1.5ch; margin-top: 4px; font-size: .8125rem; letter-spacing: .01em; min-height: 1.6em; }
+    .type { display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
+    .type::before { content: ""; width: 8px; height: 8px; background: var(--tc); }
+
+    .status { color: var(--dim); padding: 32px 0; }
+
+    /* press feedback starts on pointer-down and is instant; the release settles on the spring */
+    .btn {
+      font: inherit;
+      cursor: pointer;
+      color: var(--bright);
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 6px 14px;
+      transition: background-color .2s, color .2s, border-color .2s, transform var(--spring-snap) var(--spring);
+    }
+    .btn:active:not(:disabled) { transform: scale(.97); transition-duration: .2s, .2s, .2s, var(--press); }
+    .btn:disabled { color: var(--dim); cursor: default; background: transparent; border-color: var(--line); }
+    .btn.primary { background: var(--bright); color: var(--bg); border-color: var(--bright); }
+    .btn.danger { color: var(--err); border-color: color-mix(in srgb, var(--err) 50%, transparent); }
+    .btn.armed { background: var(--err); color: var(--bg); border-color: var(--err); }
+    @media (hover: hover) {
+      .btn:hover:not(:disabled) { background: var(--bright); color: var(--bg); border-color: var(--bright); }
+      .btn.primary:hover:not(:disabled) { background: transparent; color: var(--bright); }
+      .btn.danger:hover:not(:disabled) { background: var(--err); color: var(--bg); border-color: var(--err); }
+    }
+    .status .btn { margin-top: 12px; }
+
+    /* sheets grow out of whatever opened them (--from-* is set from that element's position) and
+       go back the same way; reversing mid-way starts from wherever the sheet is on screen */
+    dialog {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--tc, var(--bright));
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--tc, transparent) 25%, transparent), 0 0 48px color-mix(in srgb, var(--tc, transparent) 22%, transparent);
+      padding: 0;
+      width: min(580px, calc(100% - 24px));
+      max-height: calc(100% - 24px);
+      margin: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
+      opacity: 0;
+      transform: translate(var(--from-x, 0px), var(--from-y, 12px)) scale(var(--from-s, .96));
+      transition:
+        border-color .4s, box-shadow .4s,
+        opacity .2s ease,
+        transform var(--spring-snap) var(--spring),
+        overlay var(--spring-snap) allow-discrete,
+        display var(--spring-snap) allow-discrete;
+    }
+    dialog[open] {
+      opacity: 1;
+      transform: none;
+      transition:
+        border-color .4s, box-shadow .4s,
+        opacity .2s ease,
+        transform var(--spring-move) var(--spring),
+        overlay var(--spring-move) allow-discrete,
+        display var(--spring-move) allow-discrete;
+    }
+    @starting-style {
+      dialog[open] { opacity: 0; transform: translate(var(--from-x, 0px), var(--from-y, 12px)) scale(var(--from-s, .96)); }
+    }
+    dialog::backdrop {
+      background: transparent;
+      transition: background-color .3s ease, overlay .3s allow-discrete, display .3s allow-discrete;
+    }
+    dialog[open]::backdrop { background: var(--scrim); }
+    @starting-style {
+      dialog[open]::backdrop { background: transparent; }
+    }
+    /* while a finger or pointer holds the sheet, it follows 1:1 with no transition in the way */
+    dialog.is-held { transition: border-color .4s, box-shadow .4s; }
+    @keyframes fade { from { opacity: 0; } }
+
+    .d-bar {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 2ch;
+      padding: 8px 12px 8px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--dim);
+      font-size: .8125rem;
+      letter-spacing: .01em;
+    }
+    /* the detail sheet's bar is its handle: drag it down to put the sheet away */
+    #detail .d-bar { touch-action: none; cursor: grab; padding-top: 12px; }
+    #detail.is-held .d-bar { cursor: grabbing; }
+    #detail .d-bar::before {
+      content: ""; position: absolute; left: 50%; top: 3px; width: 36px; height: 3px; margin-left: -18px;
+      background: var(--line); border-radius: 2px;
+    }
+    .d-bar .path-tc { color: var(--ink); }
+    .d-actions { display: flex; gap: 2px; }
+    .d-actions button {
+      font: inherit;
+      color: var(--bright);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 2px 8px;
+      transition: opacity .2s;
+    }
+    .d-actions button:active { opacity: .55; transition-duration: 0s; }
+    @media (hover: hover) {
+      .d-actions button:hover { background: var(--bright); color: var(--bg); }
+    }
+
+    /* swiping the content sideways pages through the Pokédex on touch screens */
+    #dContent { touch-action: pan-y; will-change: transform; }
+    .d-body { padding: 20px 20px 16px; animation: fade .25s both; }
+    .d-head { display: grid; grid-template-columns: 150px 1fr; gap: 20px; align-items: center; margin-bottom: 18px; }
+    .d-head h2 { font-size: 1.7rem; font-weight: 700; color: var(--bright); letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+    .d-head .num { font-size: .875rem; color: var(--ink); }
+
+    .d-art { position: relative; width: 150px; height: 150px; overflow: hidden; }
+    .d-art::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(closest-side, color-mix(in srgb, var(--tc, transparent) 35%, transparent), transparent),
+        repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--tc, var(--line)) 12%, transparent) 3px 4px);
+    }
+    .d-art img {
+      position: relative;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      animation: colorize 1s ease-out both;
+    }
+    .d-art::after {
+      content: "";
+      position: absolute; left: 0; right: 0; top: 0;
+      height: 2px;
+      background: var(--ink);
+      box-shadow: 0 0 12px 2px var(--tc, var(--bright));
+      animation: scan .8s ease-in-out both;
+    }
+    @keyframes scan {
+      from { transform: translateY(-4px); opacity: 1; }
+      90%  { transform: translateY(150px); opacity: 1; }
+      to   { transform: translateY(150px); opacity: 0; }
+    }
+    @keyframes colorize {
+      from { filter: grayscale(1) brightness(.4); opacity: .4; }
+      70%  { filter: grayscale(1) brightness(1); opacity: 1; }
+      to   { filter: none; }
+    }
+
+    .flavor { color: var(--dim); margin-bottom: 18px; max-width: 62ch; }
+
+    .kv { display: grid; grid-template-columns: 11ch 1fr; gap: 2px 0; margin-bottom: 20px; }
+    .kv dt { color: var(--dim); }
+    .kv dd { color: var(--bright); }
+
+    .stats-title { color: var(--dim); font-weight: 400; font-size: .9375rem; margin-bottom: 6px; }
+    .stat { display: grid; grid-template-columns: 9ch 4ch 1fr; gap: 0 1ch; white-space: nowrap; }
+    .stat .label { color: var(--dim); }
+    .stat .val { color: var(--bright); text-align: right; font-variant-numeric: tabular-nums; }
+    .stat .bar { color: var(--ink); overflow: hidden; letter-spacing: -0.02em; }
+    .stat .bar .empty { color: var(--line); }
+    .stat.total { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+    .stat.total .val { color: var(--ink); font-weight: 500; }
+
+    .d-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+    }
+    .d-foot .confirm { color: var(--bright); margin-right: auto; }
+    .d-hint { color: var(--dim); font-size: .75rem; letter-spacing: .02em; margin-left: auto; }
+
+    .f-body { padding: 18px 20px 6px; display: grid; gap: 14px; }
+    .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .f-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
+    .f-field { display: grid; gap: 4px; align-content: start; }
+    .f-field > span:first-child { color: var(--dim); font-size: .8125rem; letter-spacing: .01em; }
+    .f-field input, .f-field select, .f-field textarea {
+      font: inherit;
+      width: 100%;
+      color: var(--bright);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 0;
+      padding: 6px 8px;
+      transition: border-color .2s;
+    }
+    .f-field textarea { resize: vertical; min-height: 4.5em; }
+    .f-field input:focus, .f-field select:focus, .f-field textarea:focus { outline: none; border-color: var(--bright); }
+    .f-field.invalid input, .f-field.invalid select, .f-field.invalid textarea { border-color: var(--err); }
+    .f-msg { color: var(--err); font-size: .75rem; letter-spacing: .01em; min-height: 0; }
+    .f-msg:empty { display: none; }
+    .f-legend { color: var(--dim); font-size: .8125rem; margin-bottom: 6px; }
+    .f-error { color: var(--err); }
+    .f-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px 20px; }
+
+    /* the status line rises from the bottom edge and goes back down the same way */
+    .log {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      z-index: 5;
+      max-width: calc(100% - 32px);
+      padding: 8px 14px;
+      background: var(--material-heavy);
+      -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: .8125rem;
+      letter-spacing: .01em;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 16px);
+      transition: opacity .2s ease, transform var(--spring-snap) var(--spring), visibility 0s linear var(--spring-snap);
+    }
+    .log.is-shown {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      transition: opacity .2s ease, transform var(--spring-move) var(--spring), visibility 0s;
+    }
+    .log .method { color: var(--bright); font-weight: 500; }
+    .log.error { border-color: var(--err); }
+    .log.error .code { color: var(--err); }
+
+    footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: .8125rem; letter-spacing: .01em; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+    @media (max-width: 520px) {
+      body { font-size: .875rem; }
+      .wrap { padding-top: 32px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .tools { margin-left: 0; }
+      /* one scrolling row of filters keeps the sticky bar short on a phone */
+      .chips {
+        flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+        margin: 0 -20px; padding: 0 20px; scroll-padding-inline: 20px;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 24px), transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 24px), transparent);
+      }
+      .chips::-webkit-scrollbar { display: none; }
+      /* the bar is tall on a phone, so it tucks away while scrolling down and returns on the way up */
+      .controls { transition: transform var(--spring-snap) var(--spring); }
+      .controls.is-tucked { transform: translateY(calc(-100% - 20px)); }
+      .d-head { grid-template-columns: 104px 1fr; gap: 14px; }
+      .d-art { width: 104px; height: 104px; }
+      @keyframes scan {
+        from { transform: translateY(-4px); opacity: 1; }
+        90%  { transform: translateY(104px); opacity: 1; }
+        to   { transform: translateY(104px); opacity: 0; }
+      }
+      .f-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* fingers need bigger targets than a mouse */
+    @media (pointer: coarse) {
+      .btn, .d-actions button { min-height: 44px; }
+      .chip { min-height: 40px; }
+    }
+
+    /* reduced motion keeps the feedback but swaps movement for short cross-fades */
+    @media (prefers-reduced-motion: reduce) {
+      .cursor { animation: none; }
+      @keyframes boot { from { opacity: 0; } }
+      @keyframes scan { from { opacity: 0; } to { opacity: 0; } }
+      .wrap, body:has(dialog[open]) .wrap { transform: none; }
+      .card:focus-visible, .card:active, .chip:active, .btn:active:not(:disabled) { transform: none; }
+      .card:focus-visible .art img, .card:active .art img { transform: none; }
+      dialog, dialog[open] { transform: none; }
+      @starting-style { dialog[open] { transform: none; } }
+      .log, .log.is-shown { transform: translate(-50%, 0); }
+      @media (hover: hover) {
+        .card:hover, .card:hover:active { transform: none; }
+        .card:hover .art img { transform: none; }
+      }
+    }
+
+    /* reduced transparency and higher contrast make the floating surfaces solid */
+    @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+      .controls::before, .log { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .controls::after { background: linear-gradient(var(--bg), transparent); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="path">adlune:<a href="/" title="Back to adrianlara.dev">~</a>/pokedex$ <span class="cmd">./pokedex</span></p>
+      <h1>Pokédex</h1>
+      <p class="progress" id="progress" aria-live="polite">GET /pokemon<span class="cursor" aria-hidden="true"></span></p>
+    </header>
+
+    <div class="controls" id="controls">
+      <div class="row">
+        <div class="field">
+          <label for="search">search</label>
+          <input id="search" type="search" placeholder="name or number" autocomplete="off" spellcheck="false">
+        </div>
+        <p class="count" id="count" aria-live="polite"></p>
+        <div class="tools">
+          <button class="btn primary" id="addBtn" type="button">+ add pokémon</button>
+          <button class="btn danger" id="resetBtn" type="button">reset</button>
+        </div>
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="Filter by type"></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="status" id="status" hidden></div>
+
+    <footer>
+      <p>Original data from <a href="https://pokeapi.co" target="_blank" rel="noopener">PokéAPI</a>, served from a SQLite database through my <a id="apiLink" href="#" target="_blank" rel="noopener">Flask API</a>. Fan project, not affiliated with Nintendo, Game Freak or The Pokémon Company.</p>
+      <p><a href="/">adrianlara.dev</a></p>
+    </footer>
+  </div>
+
+  <dialog id="detail" aria-labelledby="detailName">
+    <div class="d-bar">
+      <span>pokedex/<span class="path-tc" id="dPath"></span></span>
+      <div class="d-actions">
+        <button type="button" id="prevBtn" aria-label="Previous Pokémon">‹ prev</button>
+        <button type="button" id="nextBtn" aria-label="Next Pokémon">next ›</button>
+        <button type="button" id="closeBtn">close [esc]</button>
+      </div>
+    </div>
+    <div id="dContent"></div>
+    <div class="d-foot" id="dFoot"></div>
+  </dialog>
+
+  <dialog id="editor" aria-labelledby="editorTitle">
+    <form id="form" novalidate>
+      <div class="d-bar">
+        <span id="editorTitle">new pokémon</span>
+        <div class="d-actions">
+          <button type="button" id="cancelBtn">cancel [esc]</button>
+        </div>
+      </div>
+
+      <div class="f-body">
+        <p class="f-error" id="formError" role="alert" hidden></p>
+
+        <label class="f-field" data-field="name">
+          <span>name</span>
+          <input name="name" maxlength="30" autocomplete="off" required>
+          <span class="f-msg"></span>
+        </label>
+
+        <div class="f-row">
+          <label class="f-field" data-field="types">
+            <span>type</span>
+            <select name="type1" id="type1" required></select>
+            <span class="f-msg"></span>
+          </label>
+          <label class="f-field">
+            <span>second type</span>
+            <select name="type2" id="type2"></select>
+          </label>
+        </div>
+
+        <div class="f-row">
+          <label class="f-field" data-field="height">
+            <span>height (m)</span>
+            <input name="height" type="number" step="0.1" min="0.1" max="100" inputmode="decimal">
+            <span class="f-msg"></span>
+          </label>
+          <label class="f-field" data-field="weight">
+            <span>weight (kg)</span>
+            <input name="weight" type="number" step="0.1" min="0.1" max="10000" inputmode="decimal">
+            <span class="f-msg"></span>
+          </label>
+        </div>
+
+        <label class="f-field" data-field="abilities">
+          <span>abilities (comma-separated, up to 3)</span>
+          <input name="abilities" autocomplete="off" placeholder="overgrow, chlorophyll">
+          <span class="f-msg"></span>
+        </label>
+
+        <div>
+          <p class="f-legend">base stats (1–255)</p>
+          <div class="f-stats" id="statFields"></div>
+        </div>
+
+        <label class="f-field" data-field="description">
+          <span>description</span>
+          <textarea name="description" maxlength="500" rows="3"></textarea>
+          <span class="f-msg"></span>
+        </label>
+
+        <label class="f-field" data-field="image">
+          <span>image link (optional)</span>
+          <input name="image" type="url" placeholder="https://…" autocomplete="off">
+          <span class="f-msg"></span>
+        </label>
+      </div>
+
+      <div class="f-foot">
+        <button class="btn" type="button" id="cancelBtn2">cancel</button>
+        <button class="btn primary" type="submit" id="saveBtn">add pokémon</button>
+      </div>
+    </form>
+  </dialog>
+
+  <p class="log" id="log" role="status"></p>
+
+  <script>
+    const API_URL = ["localhost", "127.0.0.1"].includes(location.hostname)
+      ? "http://127.0.0.1:5000"
+      : "https://adlune.pythonanywhere.com";
+
+    const BAR_WIDTH = 20;
+    const BAR_MAX = 200;
+    const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const COARSE = window.matchMedia("(pointer: coarse)");
+
+    const TYPE_COLORS = {
+      normal: "#a8a77a", fire: "#ee8130", water: "#6390f0", electric: "#f7d02c",
+      grass: "#7ac74c", ice: "#96d9d6", fighting: "#c22e28", poison: "#a33ea1",
+      ground: "#e2bf65", flying: "#a98ff3", psychic: "#f95587", bug: "#a6b91a",
+      rock: "#b6a136", ghost: "#735797", dragon: "#6f35fc", dark: "#705746",
+      steel: "#b7b7ce", fairy: "#d685ad"
+    };
+    const typeColor = (type) => TYPE_COLORS[type] || "#888888";
+
+    const STATS = [
+      ["hp", "hp"], ["attack", "attack"], ["defense", "defense"],
+      ["special_attack", "sp.atk"], ["special_defense", "sp.def"], ["speed", "speed"]
+    ];
+
+    let pokemon = [];
+    let activeType = "";
+    let currentId = null;
+    let editingId = null;
+    let animToken = 0;
+    let firstRender = true;
+    const cards = new Map();
+
+    const $ = (id) => document.getElementById(id);
+    const grid = $("grid"), statusEl = $("status"), controls = $("controls");
+    const searchEl = $("search"), countEl = $("count"), chipsEl = $("chips");
+    const progressEl = $("progress"), logEl = $("log");
+    const dialog = $("detail"), dContent = $("dContent"), dFoot = $("dFoot"), dPath = $("dPath");
+    const editor = $("editor"), form = $("form"), formError = $("formError");
+
+    const pad = (n) => "#" + String(n).padStart(4, "0");
+    const input = (name) => form.elements.namedItem(name);
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function button(label, className, onClick) {
+      const b = el("button", className, label);
+      b.type = "button";
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    function typeTag(type) {
+      const tag = el("span", "type", type);
+      tag.style.setProperty("--tc", typeColor(type));
+      return tag;
+    }
+
+    function artwork(p, className) {
+      const holder = el("div", className);
+      const placeholder = () => holder.replaceChildren(el("div", "noart", "?"));
+      if (!p.image) { placeholder(); return holder; }
+      const img = el("img");
+      img.src = p.image;
+      img.alt = className === "art" ? "" : p.name;
+      img.loading = "lazy";
+      img.addEventListener("error", placeholder);
+      holder.append(img);
+      return holder;
+    }
+
+    let logTimer;
+    function log(method, path, status, message, isError) {
+      clearTimeout(logTimer);
+      logEl.classList.toggle("error", Boolean(isError));
+      logEl.replaceChildren(el("span", "method", method), ` ${path} `, el("span", "code", String(status)), ` ${message}`);
+      logEl.classList.add("is-shown");
+      logTimer = setTimeout(() => logEl.classList.remove("is-shown"), isError ? 7000 : 4000);
+    }
+
+    // critically damped spring that starts with a given velocity (px per ms): no overshoot, and
+    // motion that follows a gesture picks up the pointer's speed instead of restarting from rest
+    function spring(from, to, velocity, response, onUpdate, onDone) {
+      if (REDUCED_MOTION) { onUpdate(to); if (onDone) onDone(); return () => {}; }
+      const w = 2 * Math.PI / response / 1000;
+      const x0 = from - to, b = velocity + w * x0;
+      const start = performance.now();
+      let raf = requestAnimationFrame(function tick(now) {
+        const t = now - start, e = Math.exp(-w * t);
+        const x = (x0 + b * t) * e, v = (velocity - w * b * t) * e;
+        if (Math.abs(x) < 0.5 && Math.abs(v) < 0.02) { onUpdate(to); if (onDone) onDone(); return; }
+        onUpdate(to + x);
+        raf = requestAnimationFrame(tick);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+
+    // past an edge, things follow less and less instead of stopping dead
+    const rubberband = (over, dim) => (over * dim * 0.55) / (dim + 0.55 * Math.abs(over));
+
+    // where a flick would come to rest, the way scrolling decelerates (rate per ms)
+    const project = (velocity, rate = 0.99) => velocity * rate / (1 - rate);
+
+    function releaseVelocity(hist, now, key) {
+      const last = hist[hist.length - 1];
+      if (!last || now - last.t > 80) return 0;
+      const first = hist.find((s) => last.t - s.t <= 100) || last;
+      const span = last.t - first.t;
+      return span > 0 ? (last[key] - first[key]) / span : 0;
+    }
+
+    // a sheet grows out of, and shrinks back into, the thing on the page that stands for it
+    function anchorTo(dlg, source) {
+      const r = source && source.isConnected && !source.hidden ? source.getBoundingClientRect() : null;
+      const onScreen = r && r.width > 0 && r.bottom > 0 && r.top < innerHeight;
+      const width = Math.min(580, innerWidth - 24);
+      dlg.style.setProperty("--from-x", onScreen ? `${(r.left + r.width / 2 - innerWidth / 2).toFixed(1)}px` : "0px");
+      dlg.style.setProperty("--from-y", onScreen ? `${(r.top + r.height / 2 - innerHeight / 2).toFixed(1)}px` : "12px");
+      dlg.style.setProperty("--from-s", onScreen ? Math.max(.2, r.width / width).toFixed(3) : ".96");
+    }
+
+    async function api(method, path, body) {
+      let res;
+      try {
+        res = await fetch(API_URL + path, {
+          method,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined
+        });
+      } catch {
+        const err = new Error("Couldn’t reach the API. It may be waking up or offline.");
+        err.status = 0;
+        throw err;
+      }
+      const data = res.status === 204 ? null : await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error((data && data.error) || `Request failed (${res.status})`);
+        err.status = res.status;
+        err.details = (data && data.details) || {};
+        throw err;
+      }
+      return { status: res.status, data };
+    }
+
+    function renderChips() {
+      const counts = {};
+      for (const p of pokemon) for (const t of p.types) counts[t] = (counts[t] || 0) + 1;
+      if (activeType && !counts[activeType]) activeType = "";
+
+      const chip = (type, n) => {
+        const b = el("button", "chip");
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(type === activeType));
+        if (type) b.style.setProperty("--tc", typeColor(type));
+        b.append(type || "all", el("span", "n", String(n)));
+        b.addEventListener("click", () => {
+          activeType = activeType === type || !type ? "" : type;
+          chipsEl.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.firstChild.textContent === (activeType || "all"))));
+          applyFilters();
+        });
+        return b;
+      };
+      chipsEl.replaceChildren(chip("", pokemon.length), ...Object.keys(counts).sort().map((t) => chip(t, counts[t])));
+    }
+
+    function createCard(p, i) {
+      const card = el("button", "card");
+      card.type = "button";
+      card.style.setProperty("--i", i);
+      card.style.setProperty("--tc", typeColor(p.types[0]));
+      card.setAttribute("aria-label", `${p.name}, ${pad(p.id)}. Show details`);
+
+      const types = el("div", "types");
+      types.append(...p.types.map(typeTag));
+
+      card.append(artwork(p, "art"), el("span", "num", pad(p.id)), el("span", "name", p.name), types);
+      card.addEventListener("click", () => openDetail(p.id));
+      cards.set(p.id, card);
+      return card;
+    }
+
+    function render() {
+      cards.clear();
+      grid.replaceChildren(...pokemon.map(createCard));
+      renderChips();
+      applyFilters();
+      if (firstRender) {
+        firstRender = false;
+        setTimeout(() => { grid.classList.add("settled"); controls.classList.add("settled"); }, 900);
+      }
+    }
+
+    function applyFilters() {
+      const q = searchEl.value.trim().toLowerCase().replace(/^#/, "");
+      let shown = 0;
+      for (const p of pokemon) {
+        const matchesText = !q || p.name.toLowerCase().includes(q) || String(p.id) === q.replace(/^0+/, "");
+        const matchesType = !activeType || p.types.includes(activeType);
+        const visible = matchesText && matchesType;
+        cards.get(p.id).hidden = !visible;
+        if (visible) shown++;
+      }
+      countEl.textContent = `${shown} of ${pokemon.length} shown`;
+      statusEl.hidden = shown > 0;
+      statusEl.textContent = pokemon.length
+        ? "No Pokémon match. Try a different name, number or type."
+        : "The Pokédex is empty. Add a Pokémon or reset to the original 100.";
+    }
+
+    async function load() {
+      try {
+        const { status, data } = await api("GET", "/pokemon");
+        pokemon = data;
+        render();
+        const cursor = el("span", "cursor");
+        cursor.setAttribute("aria-hidden", "true");
+        progressEl.replaceChildren("GET /pokemon ", el("span", "ok", `${status} OK`), `, ${pokemon.length} entries. Select one to see its stats.`, cursor);
+      } catch (err) {
+        progressEl.textContent = `GET /pokemon failed (${err.status || "no response"})`;
+        statusEl.hidden = false;
+        statusEl.replaceChildren(el("p", "", err.message), button("Retry", "btn", load));
+      }
+    }
+
+    function animateStats(rows) {
+      const token = ++animToken;
+      if (REDUCED_MOTION) return rows.forEach((r) => r.set(r.value));
+      const start = performance.now();
+      const DURATION = 650, STAGGER = 90, DELAY = 350;
+      function frame(now) {
+        if (token !== animToken) return;
+        let running = false;
+        rows.forEach((r, i) => {
+          const t = Math.min(1, Math.max(0, (now - start - DELAY - i * STAGGER) / DURATION));
+          r.set(Math.round(r.value * (1 - Math.pow(1 - t, 3))));
+          if (t < 1) running = true;
+        });
+        if (running) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function statRow(label, value, isTotal) {
+      const row = el("div", isTotal ? "stat total" : "stat");
+      row.setAttribute("aria-label", `${label}: ${value}`);
+      const val = el("span", "val", "0");
+      row.append(el("span", "label", label), val);
+      let fill = null, empty = null;
+      if (isTotal) {
+        row.append(el("span"));
+      } else {
+        const bar = el("span", "bar");
+        bar.setAttribute("aria-hidden", "true");
+        fill = el("span");
+        empty = el("span", "empty", "░".repeat(BAR_WIDTH));
+        bar.append(fill, empty);
+        row.append(bar);
+      }
+      const set = (v) => {
+        val.textContent = String(v);
+        if (!fill) return;
+        const filled = v === 0 ? 0 : Math.max(1, Math.min(BAR_WIDTH, Math.round((v / BAR_MAX) * BAR_WIDTH)));
+        fill.textContent = "█".repeat(filled);
+        empty.textContent = "░".repeat(BAR_WIDTH - filled);
+      };
+      return { row, value, set };
+    }
+
+    function detailActions(p) {
+      const hint = el("span", "d-hint", COARSE.matches ? "swipe to browse" : "← → to browse");
+      dFoot.replaceChildren(
+        button("edit", "btn", () => openEditor(p)),
+        button("delete", "btn danger", () => confirmDelete(p)),
+        hint
+      );
+    }
+
+    function confirmDelete(p) {
+      const yes = button("yes, delete", "btn danger armed", () => deletePokemon(p));
+      dFoot.replaceChildren(
+        el("span", "confirm", `Delete ${p.name} from the Pokédex?`),
+        yes,
+        button("cancel", "btn", () => detailActions(p))
+      );
+      yes.focus();
+    }
+
+    async function deletePokemon(p) {
+      dFoot.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      try {
+        const { status } = await api("DELETE", `/pokemon/${p.id}`);
+        currentId = null;
+        // its card is about to disappear, so the sheet simply recedes in place
+        anchorTo(dialog, null);
+        dialog.close();
+        log("DELETE", `/pokemon/${p.id}`, status, `deleted ${p.name}.`);
+        await load();
+      } catch (err) {
+        log("DELETE", `/pokemon/${p.id}`, err.status, err.message, true);
+        detailActions(p);
+      }
+    }
+
+    async function openDetail(id) {
+      currentId = id;
+      dPath.textContent = String(id).padStart(4, "0");
+      const known = pokemon.find((p) => p.id === id);
+      if (known) dialog.style.setProperty("--tc", typeColor(known.types[0]));
+      dContent.replaceChildren(el("div", "status d-body", `GET /pokemon/${id}…`));
+      dFoot.replaceChildren();
+      if (!dialog.open) {
+        resetSheet();
+        anchorTo(dialog, cards.get(id));
+        dialog.showModal();
+      }
+
+      let p;
+      try {
+        p = (await api("GET", `/pokemon/${id}`)).data;
+      } catch (err) {
+        if (currentId !== id) return;
+        dContent.replaceChildren(el("div", "status d-body", err.status === 404 ? "This Pokémon isn’t in the Pokédex anymore." : err.message));
+        if (err.status === 404) load();
+        return;
+      }
+      if (currentId !== id) return;
+
+      dPath.textContent = `${String(p.id).padStart(4, "0")}-${p.name.toLowerCase().replace(/\s+/g, "-")}`;
+      dialog.style.setProperty("--tc", typeColor(p.types[0]));
+
+      const info = el("div");
+      const title = el("h2", "", p.name);
+      title.id = "detailName";
+      const typeRow = el("div", "types");
+      typeRow.append(...p.types.map(typeTag));
+      info.append(el("p", "num", pad(p.id)), title, typeRow);
+      const head = el("div", "d-head");
+      head.append(artwork(p, "d-art"), info);
+
+      const kv = el("dl", "kv");
+      const fact = (k, v) => kv.append(el("dt", "", k), el("dd", "", v));
+      fact("height", `${p.height.toFixed(1)} m`);
+      fact("weight", `${p.weight.toFixed(1)} kg`);
+      fact("abilities", p.abilities.join(", "));
+
+      const stats = el("div");
+      stats.append(el("h3", "stats-title", "base stats"));
+      const rows = STATS.map(([key, label]) => statRow(label, p.stats[key]));
+      const total = statRow("total", STATS.reduce((sum, [key]) => sum + p.stats[key], 0), true);
+      stats.append(...rows.map((r) => r.row), total.row);
+
+      const body = el("div", "d-body");
+      body.append(head);
+      if (p.description) body.append(el("p", "flavor", p.description));
+      body.append(kv, stats);
+      dContent.replaceChildren(body);
+      detailActions(p);
+      animateStats([...rows, total]);
+    }
+
+    function neighbour(dir) {
+      const list = pokemon.filter((p) => !cards.get(p.id).hidden);
+      if (!list.length || currentId === null) return null;
+      const i = list.findIndex((p) => p.id === currentId);
+      return list[(i + dir + list.length) % list.length].id;
+    }
+
+    // the detail content's sideways offset, driven by swipes and by the springs that follow them
+    const pager = { x: 0, stop: null };
+    function setPager(x) {
+      pager.x = x;
+      const w = dContent.offsetWidth || 1;
+      dContent.style.transform = x ? `translateX(${x.toFixed(1)}px)` : "";
+      // content is see-through while it travels, so the motion reads as moving, not flashing
+      dContent.style.opacity = x ? String(Math.max(.25, 1 - Math.abs(x) / w * .9)) : "";
+    }
+    function pagerTo(target, velocity, response, done) {
+      if (pager.stop) pager.stop();
+      pager.stop = spring(pager.x, target, velocity, response, setPager, () => { pager.stop = null; if (done) done(); });
+    }
+
+    // the next entry comes in from the side it sits on; after a swipe it keeps the swipe's speed
+    function step(dir, velocity = 0, from = 48) {
+      const id = neighbour(dir);
+      if (id === null || id === currentId) return;
+      openDetail(id);
+      if (pager.stop) { pager.stop(); pager.stop = null; }
+      setPager(dir * from);
+      pagerTo(0, velocity, 0.4);
+    }
+
+    function buildForm() {
+      const types = Object.keys(TYPE_COLORS).sort();
+      $("type1").replaceChildren(...types.map((t) => new Option(t, t)));
+      $("type2").replaceChildren(new Option("none", ""), ...types.map((t) => new Option(t, t)));
+      $("statFields").replaceChildren(...STATS.map(([key, label]) => {
+        const field = el("label", "f-field");
+        field.dataset.field = `stats.${key}`;
+        const input = el("input");
+        Object.assign(input, { name: key, type: "number", min: 1, max: 255, step: 1, inputMode: "numeric" });
+        field.append(el("span", "", label), input, el("span", "f-msg"));
+        return field;
+      }));
+      $("type1").addEventListener("change", () => editor.style.setProperty("--tc", typeColor($("type1").value)));
+    }
+
+    function clearErrors() {
+      formError.hidden = true;
+      form.querySelectorAll(".f-field").forEach((f) => {
+        f.classList.remove("invalid");
+        const msg = f.querySelector(".f-msg");
+        if (msg) msg.textContent = "";
+      });
+    }
+
+    function openEditor(p) {
+      editingId = p ? p.id : null;
+      clearErrors();
+      form.reset();
+      $("editorTitle").textContent = p ? `edit ${pad(p.id)}` : "new pokémon";
+      $("saveBtn").textContent = p ? "save changes" : "add pokémon";
+
+      if (p) {
+        input("name").value = p.name;
+        $("type1").value = p.types[0];
+        $("type2").value = p.types[1] || "";
+        input("height").value = p.height;
+        input("weight").value = p.weight;
+        input("abilities").value = p.abilities.join(", ");
+        STATS.forEach(([key]) => { input(key).value = p.stats[key]; });
+        input("description").value = p.description;
+        input("image").value = p.image;
+      } else {
+        $("type1").value = "normal";
+      }
+      editor.style.setProperty("--tc", typeColor($("type1").value));
+
+      if (dialog.open) {
+        anchorTo(dialog, null);
+        dialog.close();
+      }
+      // a new entry grows out of the add button; an edit takes over from the detail sheet in place
+      anchorTo(editor, p ? null : $("addBtn"));
+      editor.showModal();
+      input("name").focus();
+    }
+
+    function closeEditor() {
+      anchorTo(editor, editingId === null ? $("addBtn") : null);
+      editor.close();
+    }
+
+    editor.addEventListener("close", () => {
+      if (editingId !== null && !editor.dataset.saved) openDetail(editingId);
+      delete editor.dataset.saved;
+    });
+
+    function readForm() {
+      const number = (name) => input(name).value === "" ? null : Number(input(name).value);
+      return {
+        name: input("name").value,
+        types: [$("type1").value, $("type2").value].filter(Boolean),
+        height: number("height"),
+        weight: number("weight"),
+        abilities: input("abilities").value.split(",").map((a) => a.trim()).filter(Boolean),
+        stats: Object.fromEntries(STATS.map(([key]) => [key, number(key)])),
+        description: input("description").value,
+        image: input("image").value.trim()
+      };
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearErrors();
+      const saveBtn = $("saveBtn");
+      saveBtn.disabled = true;
+
+      const method = editingId === null ? "POST" : "PUT";
+      const path = editingId === null ? "/pokemon" : `/pokemon/${editingId}`;
+      try {
+        const { status, data } = await api(method, path, readForm());
+        editor.dataset.saved = "1";
+        editor.close();
+        log(method, path, status, method === "POST" ? `added ${data.name} as ${pad(data.id)}.` : `saved ${data.name}.`);
+        await load();
+        openDetail(data.id);
+      } catch (err) {
+        formError.textContent = err.message;
+        formError.hidden = false;
+        for (const [field, message] of Object.entries(err.details || {})) {
+          const box = form.querySelector(`[data-field="${field}"]`);
+          if (!box) continue;
+          box.classList.add("invalid");
+          box.querySelector(".f-msg").textContent = message;
+        }
+        (form.querySelector(".invalid input, .invalid select, .invalid textarea") || formError).focus?.();
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    const resetBtn = $("resetBtn");
+    let resetTimer;
+    function disarmReset() {
+      clearTimeout(resetTimer);
+      resetBtn.classList.remove("armed");
+      resetBtn.textContent = "reset";
+    }
+    resetBtn.addEventListener("click", async () => {
+      if (!resetBtn.classList.contains("armed")) {
+        resetBtn.classList.add("armed");
+        resetBtn.textContent = "confirm reset?";
+        resetTimer = setTimeout(disarmReset, 4000);
+        return;
+      }
+      disarmReset();
+      resetBtn.disabled = true;
+      try {
+        const { status, data } = await api("POST", "/reset");
+        log("POST", "/reset", status, `restored the original ${data.count} Pokémon.`);
+        await load();
+      } catch (err) {
+        log("POST", "/reset", err.status, err.message, true);
+      } finally {
+        resetBtn.disabled = false;
+      }
+    });
+    resetBtn.addEventListener("blur", disarmReset);
+
+    // closing returns the sheet into the card of whichever Pokémon it's showing now
+    function closeDetail() {
+      anchorTo(dialog, cards.get(currentId));
+      dialog.close();
+    }
+
+    $("addBtn").addEventListener("click", () => openEditor(null));
+    $("cancelBtn").addEventListener("click", closeEditor);
+    $("cancelBtn2").addEventListener("click", closeEditor);
+    $("prevBtn").addEventListener("click", () => step(-1));
+    $("nextBtn").addEventListener("click", () => step(1));
+    $("closeBtn").addEventListener("click", closeDetail);
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); step(-1); }
+      if (e.key === "ArrowRight") { e.preventDefault(); step(1); }
+    });
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) closeDetail(); });
+    dialog.addEventListener("cancel", () => anchorTo(dialog, cards.get(currentId)));
+    editor.addEventListener("cancel", () => anchorTo(editor, editingId === null ? $("addBtn") : null));
+    dialog.addEventListener("close", () => {
+      animToken++;
+      if (pager.stop) { pager.stop(); pager.stop = null; }
+      setPager(0);
+      if (currentId !== null && !editor.open) cards.get(currentId)?.focus({ preventScroll: true });
+    });
+
+    // swipe the detail content sideways to page through the Pokédex (touch and pen; a mouse has
+    // the arrow keys and buttons). Nothing moves until the finger has clearly gone sideways, then
+    // the content follows it 1:1; a flick or a long enough drag pages, anything else springs back
+    let swipe = null;
+    dContent.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" || !e.isPrimary) return;
+      swipe = { id: e.pointerId, x0: e.clientX, y0: e.clientY, axis: null, base: 0, slop: 0, hist: [] };
+    });
+    dContent.addEventListener("pointermove", (e) => {
+      if (!swipe || e.pointerId !== swipe.id) return;
+      const dx = e.clientX - swipe.x0, dy = e.clientY - swipe.y0;
+      if (!swipe.axis) {
+        if (Math.hypot(dx, dy) < 10) return;
+        swipe.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        if (swipe.axis === "y") { swipe = null; return; }
+        dContent.setPointerCapture(e.pointerId);
+        // catching content that is still sliding starts from where it is on screen
+        if (pager.stop) { pager.stop(); pager.stop = null; }
+        swipe.base = pager.x;
+        swipe.slop = Math.sign(dx) * 10;
+      }
+      const x = swipe.base + dx - swipe.slop;
+      const alone = neighbour(1) === currentId;
+      setPager(alone ? Math.sign(x) * rubberband(Math.abs(x), dContent.offsetWidth) : x);
+      swipe.hist.push({ x: e.clientX, t: e.timeStamp });
+      if (swipe.hist.length > 6) swipe.hist.shift();
+    });
+    const endSwipe = (e) => {
+      if (!swipe || e.pointerId !== swipe.id) return;
+      const s = swipe;
+      swipe = null;
+      if (s.axis !== "x") return;
+      const v = e.type === "pointerup" ? releaseVelocity(s.hist, e.timeStamp, "x") : 0;
+      const w = dContent.offsetWidth || 1;
+      const landing = pager.x + project(v);
+      let dir = 0;
+      if (e.type === "pointerup" && neighbour(1) !== currentId) {
+        // the direction of the flick decides, not just how far it was dragged
+        if (Math.abs(v) > 0.3) dir = v < 0 ? 1 : -1;
+        else if (Math.abs(landing) > w * 0.4) dir = landing < 0 ? 1 : -1;
+      }
+      if (!dir) { pagerTo(0, v, 0.35); return; }
+      if (navigator.vibrate) navigator.vibrate(6);
+      pagerTo(dir > 0 ? -w : w, v, 0.25, () => step(dir, v * 0.5, w * 0.35));
+    };
+    dContent.addEventListener("pointerup", endSwipe);
+    dContent.addEventListener("pointercancel", endSwipe);
+
+    // drag the sheet's top bar down to put it away; it follows 1:1, resists being pulled up,
+    // and either leaves downward (the way it was pulled) or springs back with the pointer's speed
+    const sheet = { y: 0, stop: null };
+    const dBar = dialog.querySelector(".d-bar");
+    let hold = null;
+    function setSheet(y) {
+      sheet.y = y;
+      dialog.style.transform = y ? `translateY(${y.toFixed(1)}px)` : "";
+    }
+    function resetSheet() {
+      if (sheet.stop) { sheet.stop(); sheet.stop = null; }
+      hold = null;
+      dialog.classList.remove("is-held");
+      setSheet(0);
+    }
+    dBar.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button") || !e.isPrimary || e.button !== 0) return;
+      e.preventDefault();
+      dBar.setPointerCapture(e.pointerId);
+      if (sheet.stop) { sheet.stop(); sheet.stop = null; }
+      dialog.classList.add("is-held");
+      hold = { id: e.pointerId, y0: e.clientY - sheet.y, hist: [{ y: e.clientY, t: e.timeStamp }] };
+    });
+    dBar.addEventListener("pointermove", (e) => {
+      if (!hold || e.pointerId !== hold.id) return;
+      const raw = e.clientY - hold.y0;
+      setSheet(raw < 0 ? -rubberband(-raw, innerHeight) : raw);
+      hold.hist.push({ y: e.clientY, t: e.timeStamp });
+      if (hold.hist.length > 6) hold.hist.shift();
+    });
+    const endHold = (e) => {
+      if (!hold || e.pointerId !== hold.id) return;
+      const v = e.type === "pointerup" ? releaseVelocity(hold.hist, e.timeStamp, "y") : 0;
+      hold = null;
+      if (e.type === "pointerup" && sheet.y > 0 && (v > 0.5 || sheet.y + project(v) > 160)) {
+        // leave straight down from where it is now; the close transition picks up from here
+        dialog.style.setProperty("--from-x", "0px");
+        dialog.style.setProperty("--from-y", `${innerHeight}px`);
+        dialog.style.setProperty("--from-s", "1");
+        dialog.classList.remove("is-held");
+        sheet.y = 0;
+        dialog.style.transform = "";
+        dialog.close();
+        return;
+      }
+      sheet.stop = spring(sheet.y, 0, v, 0.35, setSheet, () => {
+        sheet.stop = null;
+        dialog.classList.remove("is-held");
+      });
+    };
+    dBar.addEventListener("pointerup", endHold);
+    dBar.addEventListener("pointercancel", endHold);
+
+    // the search bar only shows its bottom edge once cards are actually passing under it. On a phone
+    // it tucks away after a deliberate scroll down and comes back on any deliberate scroll up
+    const PHONE = window.matchMedia("(max-width: 520px)");
+    let stuckQueued = false, lastY = window.scrollY, travel = 0;
+    window.addEventListener("scroll", () => {
+      if (stuckQueued) return;
+      stuckQueued = true;
+      requestAnimationFrame(() => {
+        stuckQueued = false;
+        const y = window.scrollY, dy = y - lastY;
+        lastY = y;
+        travel = Math.sign(dy) === Math.sign(travel) ? travel + dy : dy;
+        const stuck = y > 0 && controls.getBoundingClientRect().top <= 0.5;
+        controls.classList.toggle("is-stuck", stuck);
+        let tuck = controls.classList.contains("is-tucked");
+        if (!PHONE.matches || REDUCED_MOTION || !stuck || controls.contains(document.activeElement)) tuck = false;
+        else if (travel > 24) tuck = true;
+        else if (travel < -24) tuck = false;
+        controls.classList.toggle("is-tucked", tuck);
+      });
+    }, { passive: true });
+    searchEl.addEventListener("input", applyFilters);
+    $("apiLink").href = API_URL + "/";
+
+    buildForm();
+    load();
+  </script>
+</body>
+</html>
